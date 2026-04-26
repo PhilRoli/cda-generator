@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="de-AT">
+    <head>
+        <meta charset="UTF-8" />
+        <title>CDA-Übungsdokument-Ersteller — Zug 5 FK Salzburg Stadt</title>
+        <link rel="stylesheet" href="css/form.css" />
+    </head>
+    <body>
+        <header class="app-header">
+            <img id="header-logo" class="logo" alt="Zug 5 FK Salzburg Stadt" />
+            <div>
+                <h1>CDA-Übungsdokument-Ersteller</h1>
+                <div class="subtitle">Entlassungsbrief Ärztlich · Nur für Trainingszwecke</div>
+            </div>
+            <div class="spacer"></div>
+            <button class="btn" id="btn-load">Szenario laden</button>
+            <button class="btn" id="btn-save">Szenario speichern</button>
+        </header>
+
+        <div class="banner-uebung">
+            Generierte Dokumente tragen das Wasserzeichen <strong>"ÜBUNGSZWECKE"</strong> und dürfen nicht im realen
+            Patientenkontext verwendet werden.
+        </div>
+
+        <main>
+            <nav class="tabs" id="tabs"></nav>
+
+            <!-- Patient -->
+            <section class="tab-panel" data-tab="patient">
+                <div class="section-actions">
+                    <button class="btn" id="btn-faker">🎲 Zufällige Stammdaten</button>
+                </div>
+                <h2>Patient</h2>
+                <div class="grid-2">
+                    <label
+                        ><span class="label-text">Vorname(n)</span><input type="text" data-bind="patient.givenName"
+                    /></label>
+                    <label
+                        ><span class="label-text">Nachname</span><input type="text" data-bind="patient.familyName"
+                    /></label>
+                    <label
+                        ><span class="label-text">Geburtsdatum</span><input type="date" data-bind="patient.birthDate"
+                    /></label>
+                    <label
+                        ><span class="label-text">Geschlecht</span>
+                        <select data-bind="patient.gender">
+                            <option value="M">Männlich</option>
+                            <option value="F">Weiblich</option>
+                        </select>
+                    </label>
+                    <label
+                        ><span class="label-text">SVNR (10-stellig)</span
+                        ><input type="text" data-bind="patient.svnr" maxlength="10" pattern="\d{10}"
+                    /></label>
+                    <label><span class="label-text">Telefon</span><input type="tel" data-bind="patient.phone" /></label>
+                </div>
+                <h2 style="margin-top: 20px">Adresse</h2>
+                <div class="grid-4">
+                    <label
+                        ><span class="label-text">Straße</span><input type="text" data-bind="patient.address.street"
+                    /></label>
+                    <label
+                        ><span class="label-text">Hausnummer</span
+                        ><input type="text" data-bind="patient.address.houseNumber"
+                    /></label>
+                    <label
+                        ><span class="label-text">PLZ</span><input type="text" data-bind="patient.address.postalCode"
+                    /></label>
+                    <label><span class="label-text">Ort</span><input type="text" data-bind="patient.address.city" /></label>
+                </div>
+            </section>
+
+            <!-- Aufenthalt -->
+            <section class="tab-panel" data-tab="aufenthalt">
+                <h2>Krankenhaus</h2>
+                <div class="grid-2">
+                    <label
+                        ><span class="label-text">Name der Einrichtung</span
+                        ><input type="text" data-bind="organization.name"
+                    /></label>
+                    <label><span class="label-text">Telefon</span><input type="tel" data-bind="organization.phone" /></label>
+                </div>
+                <div class="grid-4">
+                    <label
+                        ><span class="label-text">Straße</span><input type="text" data-bind="organization.address.street"
+                    /></label>
+                    <label
+                        ><span class="label-text">Hausnummer</span
+                        ><input type="text" data-bind="organization.address.houseNumber"
+                    /></label>
+                    <label
+                        ><span class="label-text">PLZ</span><input type="text" data-bind="organization.address.postalCode"
+                    /></label>
+                    <label
+                        ><span class="label-text">Ort</span><input type="text" data-bind="organization.address.city"
+                    /></label>
+                </div>
+
+                <h2 style="margin-top: 20px">Aufenthalt</h2>
+                <div class="grid-3">
+                    <label
+                        ><span class="label-text">Aufnahmedatum</span
+                        ><input type="datetime-local" data-bind="encounter.admissionDate"
+                    /></label>
+                    <label
+                        ><span class="label-text">Entlassungsdatum</span
+                        ><input type="datetime-local" data-bind="encounter.dischargeDate"
+                    /></label>
+                    <label
+                        ><span class="label-text">Station / Abteilung</span><input type="text" data-bind="encounter.ward"
+                    /></label>
+                </div>
+
+                <h2 style="margin-top: 20px">Behandelnde/r Ärztin/Arzt</h2>
+                <div class="grid-3">
+                    <label
+                        ><span class="label-text">Titel</span><input type="text" data-bind="author.title" placeholder="Dr."
+                    /></label>
+                    <label><span class="label-text">Vorname</span><input type="text" data-bind="author.givenName" /></label>
+                    <label
+                        ><span class="label-text">Nachname</span><input type="text" data-bind="author.familyName"
+                    /></label>
+                </div>
+
+                <h2 style="margin-top: 20px">Dokument</h2>
+                <div class="grid-2">
+                    <label
+                        ><span class="label-text">Dokumentdatum</span><input type="datetime-local" data-bind="documentDate"
+                    /></label>
+                </div>
+            </section>
+
+            <!-- Brieftext -->
+            <section class="tab-panel" data-tab="brieftext">
+                <h2>Brieftext / Anschreiben</h2>
+                <p class="section-help">
+                    Das einleitende Anschreiben des Briefes. Lass das Feld leer für einen automatisch generierten
+                    Standardtext aus den Aufenthaltsdaten.
+                </p>
+                <label>
+                    <span class="label-text">Anschreiben</span>
+                    <textarea data-bind="brieftext.text" rows="6"></textarea>
+                </label>
+            </section>
+
+            <!-- Aufnahmegrund -->
+            <section class="tab-panel" data-tab="aufnahmegrund">
+                <h2>Aufnahmegrund</h2>
+                <p class="section-help">Kurzbeschreibung des Grundes für die stationäre Aufnahme.</p>
+                <label>
+                    <span class="label-text">Aufnahmegrund</span>
+                    <textarea data-bind="aufnahmegrund" rows="4"></textarea>
+                </label>
+            </section>
+
+            <!-- Diagnosen -->
+            <section class="tab-panel" data-tab="diagnosen">
+                <h2>Diagnosen bei Entlassung</h2>
+                <p class="section-help">Pro Zeile eine Diagnose. ICD-10 und Seitigkeit optional.</p>
+                <div id="diagnosen-list" class="row-list"></div>
+                <button class="btn" data-add="diagnosen">+ Diagnose hinzufügen</button>
+            </section>
+
+            <!-- Anamnese -->
+            <section class="tab-panel" data-tab="anamnese">
+                <h2>Anamnese / Vorerkrankungen</h2>
+                <p class="section-help">Bekannte Vorerkrankungen als Liste, ergänzend Freitext zur aktuellen Anamnese.</p>
+                <h2 style="font-size: 14px; margin: 8px 0">Vorerkrankungen</h2>
+                <div id="vorerkrankungen-list" class="row-list"></div>
+                <button class="btn" data-add="vorerkrankungen">+ Vorerkrankung hinzufügen</button>
+                <h2 style="font-size: 14px; margin: 24px 0 8px">Anamnese-Text (frei)</h2>
+                <label>
+                    <span class="label-text">Freitext</span>
+                    <textarea data-bind="anamnese" rows="6"></textarea>
+                </label>
+            </section>
+
+            <!-- Verlauf -->
+            <section class="tab-panel" data-tab="verlauf">
+                <h2>Aufenthaltsverlauf</h2>
+                <p class="section-help">Verlauf der Behandlung — Operationen, Komplikationen, Therapiewechsel, etc.</p>
+                <label>
+                    <span class="label-text">Verlauf</span>
+                    <textarea data-bind="verlauf" rows="10"></textarea>
+                </label>
+            </section>
+
+            <!-- Medikation -->
+            <section class="tab-panel" data-tab="medikation">
+                <h2>Medikation bei Entlassung</h2>
+                <p class="section-help">
+                    Schema-Format: <code>1-0-1-0</code> (Morgen-Mittag-Abend-Nacht). Beispiel: <code>1-0-0</code> für nur
+                    morgens.
+                </p>
+                <div id="medikation-list" class="row-list"></div>
+                <button class="btn" data-add="medikation">+ Medikament hinzufügen</button>
+            </section>
+
+            <!-- Empfehlungen -->
+            <section class="tab-panel" data-tab="empfehlungen">
+                <h2>Empfehlungen / Weiteres Procedere</h2>
+                <p class="section-help">Z.B. Nachkontrollen, Wundversorgung, Mobilisationshinweise, Verhaltensregeln.</p>
+                <label>
+                    <span class="label-text">Empfehlungen</span>
+                    <textarea data-bind="empfehlungen" rows="10"></textarea>
+                </label>
+            </section>
+        </main>
+
+        <footer class="actions">
+            <span class="status" id="status"></span>
+            <button class="btn" id="btn-reset">Zurücksetzen</button>
+            <button class="btn primary" id="btn-generate">Entlassungsbrief generieren</button>
+        </footer>
+
+        <input type="file" id="file-load" accept="application/json" style="display: none" />
+
+        <script type="module" src="js/app.js"></script>
+    </body>
+</html>
