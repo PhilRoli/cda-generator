@@ -3,6 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <title>CDA-Übungsdokument-Ersteller — Zug 5 FK Salzburg Stadt</title>
+        <link rel="icon" type="image/png" href="assets/favicon.png" />
         <link rel="stylesheet" href="css/form.css" />
     </head>
     <body>
@@ -13,8 +14,6 @@
                 <div class="subtitle">Entlassungsbrief Ärztlich · Nur für Trainingszwecke</div>
             </div>
             <div class="spacer"></div>
-            <button class="btn" id="btn-load">Szenario laden</button>
-            <button class="btn" id="btn-save">Szenario speichern</button>
         </header>
 
         <div class="banner-uebung">
@@ -23,6 +22,43 @@
         </div>
 
         <main>
+            <section class="form-section scenario-panel">
+                <h2>Szenarien</h2>
+                <p class="section-help">
+                    Verwalte Szenarien zentral. Wähle zwischen lokaler JSON-Datei und Cloud-Speicherung.
+                </p>
+                <div class="grid-2">
+                    <label>
+                        <span class="label-text">Speicherort</span>
+                        <select id="scenario-source">
+                            <option value="local">Lokal (JSON-Datei)</option>
+                            <option value="cloud">Cloud</option>
+                        </select>
+                    </label>
+                    <label id="cloud-username-wrap" class="hidden">
+                        <span class="label-text">Benutzername (Cloud)</span>
+                        <input type="text" id="cloud-username" placeholder="z.B. philipp" />
+                    </label>
+                </div>
+
+                <div id="scenario-local-actions" class="scenario-row">
+                    <button class="btn" id="btn-local-save">Lokal speichern (.json)</button>
+                    <button class="btn" id="btn-local-load">Lokale Datei laden</button>
+                </div>
+
+                <div id="scenario-cloud-actions" class="hidden">
+                    <div class="scenario-row">
+                        <button class="btn" id="btn-cloud-save">In Cloud speichern</button>
+                        <button class="btn danger" id="btn-cloud-delete-admin">Als Admin löschen</button>
+                    </div>
+                    <div class="scenario-row">
+                        <button class="btn" id="btn-cloud-refresh">Cloud-Liste aktualisieren</button>
+                        <select id="cloud-scenario-select"></select>
+                        <button class="btn" id="btn-cloud-load">Aus Cloud laden</button>
+                    </div>
+                </div>
+            </section>
+
             <!-- Patient -->
             <section class="form-section" data-tab="patient">
                 <div class="section-actions">
@@ -267,7 +303,8 @@
         <footer class="actions">
             <span class="status" id="status"></span>
             <button class="btn" id="btn-reset">Zurücksetzen</button>
-            <button class="btn primary" id="btn-generate">Entlassungsbrief generieren</button>
+            <button class="btn" id="btn-generate-xml">XML herunterladen</button>
+            <button class="btn primary" id="btn-generate">PDF generieren</button>
         </footer>
 
         <input type="file" id="file-load" accept="application/json" style="display: none" />

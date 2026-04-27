@@ -2,3 +2,9 @@
 beispiel-*
 ELGA_Stylesheet_v1.0.xsl
 .DS_Store
+target/
+dist/
+data/
+elga-lib/
+.env
+*.db

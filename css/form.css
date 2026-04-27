@@ -255,3 +255,14 @@ footer.actions .status {
     gap: 8px;
     margin-bottom: 12px;
 }
+
+.scenario-panel .scenario-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    align-items: center;
+}
+
+.scenario-panel #cloud-scenario-select {
+    flex: 1;
+}
