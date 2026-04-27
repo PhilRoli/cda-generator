@@ -193,6 +193,14 @@ export function generateRandomPatient() {
     };
 }
 
+export function generateRandomDoctor() {
+    const gender = Math.random() < 0.5 ? 'M' : 'F';
+    const givenName = pick(gender === 'M' ? VORNAMEN_M : VORNAMEN_F);
+    const familyName = pick(NACHNAMEN);
+    const title = pick(['Dr.', 'Dr.', 'Dr.', 'Dr. med.', 'Univ.-Prof. Dr.', 'OA Dr.', 'Prim. Dr.']);
+    return { title, givenName, familyName };
+}
+
 // Externe Validierung (z.B. für Tests / Eingabe-Validierung)
 export function isValidSvnr(svnr) {
     if (!/^\d{10}$/.test(svnr)) return false;

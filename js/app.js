@@ -1,22 +1,10 @@
 // UI-Logik: Form-State <-> DOM, Tabs, Listen-Items, Persistenz, Generierung.
 
-import { generateRandomPatient } from './faker.js';
+import { generateRandomPatient, generateRandomDoctor } from './faker.js';
 import { buildEntlassungsbrief } from './doctype-entlassung.js';
 import { LOGO_DATA_URI } from './logo-base64.js';
 
 const STORAGE_KEY = 'cda-uebung:last';
-
-const TABS = [
-    { id: 'patient', label: 'Patient' },
-    { id: 'aufenthalt', label: 'Aufenthalt & Arzt' },
-    { id: 'brieftext', label: 'Brieftext' },
-    { id: 'aufnahmegrund', label: 'Aufnahmegrund' },
-    { id: 'diagnosen', label: 'Diagnosen' },
-    { id: 'anamnese', label: 'Anamnese / Vorerkrankungen' },
-    { id: 'verlauf', label: 'Verlauf' },
-    { id: 'medikation', label: 'Medikation' },
-    { id: 'empfehlungen', label: 'Empfehlungen' },
-];
 
 // Sinnvolle Default-Inhalte (RD-Übungs-tauglich, leicht anpassbar)
 function defaultState() {
@@ -68,59 +56,43 @@ function defaultState() {
         aufnahmegrund:
             'Stationäre Aufnahme nach häuslichem Sturz mit Verdacht auf Schenkelhalsfraktur links. Patientin wurde durch den Notarzt zugewiesen.',
         diagnosen: [
-            { text: 'Mediale Schenkelhalsfraktur links', icd: 'S72.00', side: 'links' },
-            { text: 'Arterielle Hypertonie', icd: 'I10', side: '' },
-            { text: 'Diabetes mellitus Typ 2, medikamentös eingestellt', icd: 'E11.9', side: '' },
+            { text: 'Mediale Schenkelhalsfraktur links' },
+            { text: 'Arterielle Hypertonie' },
+            { text: 'Diabetes mellitus Typ 2, medikamentös eingestellt' },
         ],
         vorerkrankungen: [
-            { text: 'Arterielle Hypertonie', since: '2008', note: 'unter ACE-Hemmer eingestellt' },
-            { text: 'Diabetes mellitus Typ 2', since: '2015', note: 'orale Antidiabetika' },
-            { text: 'Z.n. Cholezystektomie', since: '2012', note: '' },
+            { text: 'Arterielle Hypertonie' },
+            { text: 'Diabetes mellitus Typ 2' },
+            { text: 'Z.n. Cholezystektomie' },
         ],
         anamnese:
             'Patientin wohnt allein in Erdgeschosswohnung, ist bisher selbstständig mobil. Sturz beim Aufstehen aus dem Sessel, kein Bewusstseinsverlust, keine Synkope erinnerlich. Schmerzen unmittelbar im linken Hüftbereich, keine Belastbarkeit mehr.',
         verlauf:
             'Bei Aufnahme klinisch und radiologisch Bestätigung der medialen Schenkelhalsfraktur links. Indikation zur operativen Versorgung gestellt. Am Folgetag Implantation einer zementierten Hüfttotalendoprothese links in Spinalanästhesie, intraoperativer Verlauf unauffällig. Postoperativ rasche Mobilisation an zwei Unterarmstützen unter physiotherapeutischer Anleitung. Wundverhältnisse reizlos, Drainagezug am 2. postoperativen Tag.\n\nUnter Thromboseprophylaxe mit niedermolekularem Heparin keine Komplikationen. Blutzucker stabil. Vorbestehende antihypertensive Therapie unverändert fortgeführt.',
         medikation: [
-            {
-                wirkstoff: 'Enoxaparin',
-                handelsname: 'Lovenox 40mg',
-                staerke: '40 mg',
-                schema: '0-0-0-1 s.c.',
-                bemerkung: 'für 4 Wochen postoperativ',
-            },
-            {
-                wirkstoff: 'Pantoprazol',
-                handelsname: 'Pantoloc',
-                staerke: '40 mg',
-                schema: '1-0-0',
-                bemerkung: 'morgens nüchtern',
-            },
-            { wirkstoff: 'Ramipril', handelsname: 'Tritace', staerke: '5 mg', schema: '1-0-0', bemerkung: 'unverändert' },
-            {
-                wirkstoff: 'Metformin',
-                handelsname: 'Glucophage',
-                staerke: '850 mg',
-                schema: '1-0-1',
-                bemerkung: 'unverändert',
-            },
-            {
-                wirkstoff: 'Paracetamol',
-                handelsname: 'Mexalen',
-                staerke: '500 mg',
-                schema: '1-1-1-1',
-                bemerkung: 'bei Schmerzen',
-            },
-            {
-                wirkstoff: 'Tramadol',
-                handelsname: 'Tramal Tropfen',
-                staerke: '20 Tr.',
-                schema: 'b.B.',
-                bemerkung: 'maximal 4×/Tag bei stärkeren Schmerzen',
-            },
+            { medikament: 'Lovenox 40 mg s.c.', schema: '0-0-0-1' },
+            { medikament: 'Pantoloc 40 mg', schema: '1-0-0' },
+            { medikament: 'Ramipril 5 mg', schema: '1-0-0' },
+            { medikament: 'Metformin 850 mg', schema: '1-0-1' },
+            { medikament: 'Mexalen 500 mg', schema: '1-1-1-1' },
+            { medikament: 'Tramal Tropfen 20 Tr.', schema: 'b.B.' },
         ],
         empfehlungen:
             'Mobilisation an zwei Unterarmstützen unter Teilbelastung links für 6 Wochen. Physiotherapie ambulant fortführen. Wundkontrolle und Fadenzug beim Hausarzt am 14. postoperativen Tag.\n\nKlinische Kontrolle in unserer orthopädischen Ambulanz in 6 Wochen mit Röntgenkontrolle.\n\nThromboseprophylaxe mit Lovenox 40mg s.c. einmal täglich für 4 Wochen.\n\nBei Fieber, zunehmenden Schmerzen, Wundsekretion oder Rötung im OP-Bereich umgehende Wiedervorstellung.',
+        allergien: [{ substanz: 'Penicillin' }, { substanz: 'Jodhaltige Kontrastmittel' }],
+        risikofaktoren: [
+            { faktor: 'Arterielle Hypertonie' },
+            { faktor: 'Adipositas' },
+            { faktor: 'Bewegungsmangel' },
+        ],
+        patientenverfuegung: {
+            status: 'beachtlich',
+            hinterlegtBei: 'Hausärztin Dr. Berger, Kopie bei Tochter',
+            datum: '2022-09-15',
+            gueltigBis: '2027-09-15',
+            bemerkung:
+                'Ablehnung intensivmedizinischer Maßnahmen bei infauster Prognose. Keine künstliche Beatmung, keine Reanimation. Schmerzlinderung erwünscht.',
+        },
     };
 }
 
@@ -167,55 +139,35 @@ function bindInputs() {
     });
 }
 
-// Tabs ----------------------------------------------------------------------
-function setupTabs() {
-    const nav = document.getElementById('tabs');
-    const panels = document.querySelectorAll('section.tab-panel');
-    TABS.forEach((tab, idx) => {
-        const btn = document.createElement('button');
-        btn.textContent = tab.label;
-        btn.dataset.tabId = tab.id;
-        if (idx === 0) btn.classList.add('active');
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('nav.tabs button').forEach((b) => b.classList.remove('active'));
-            btn.classList.add('active');
-            panels.forEach((p) => p.classList.toggle('active', p.dataset.tab === tab.id));
-        });
-        nav.appendChild(btn);
-    });
-    panels.forEach((p, i) => p.classList.toggle('active', i === 0));
-}
-
 // Listen-Items (Diagnosen, Vorerkrankungen, Medikation) ---------------------
 const LIST_TEMPLATES = {
     diagnosen: {
-        fields: [
-            { key: 'text', label: 'Diagnose', type: 'text' },
-            { key: 'icd', label: 'ICD-10', type: 'text' },
-            { key: 'side', label: 'Seitigkeit', type: 'text' },
-        ],
-        grid: 'grid-diag',
-        empty: { text: '', icd: '', side: '' },
+        fields: [{ key: 'text', label: 'Diagnose', type: 'text' }],
+        grid: 'grid-single',
+        empty: { text: '' },
     },
     vorerkrankungen: {
-        fields: [
-            { key: 'text', label: 'Vorerkrankung', type: 'text' },
-            { key: 'since', label: 'Seit', type: 'text' },
-            { key: 'note', label: 'Bemerkung', type: 'text' },
-        ],
-        grid: 'grid-vorerk',
-        empty: { text: '', since: '', note: '' },
+        fields: [{ key: 'text', label: 'Vorerkrankung', type: 'text' }],
+        grid: 'grid-single',
+        empty: { text: '' },
     },
     medikation: {
         fields: [
-            { key: 'wirkstoff', label: 'Wirkstoff', type: 'text' },
-            { key: 'handelsname', label: 'Handelsname', type: 'text' },
-            { key: 'staerke', label: 'Stärke', type: 'text' },
+            { key: 'medikament', label: 'Medikament', type: 'text' },
             { key: 'schema', label: 'Schema', type: 'text' },
-            { key: 'bemerkung', label: 'Bemerkung', type: 'text' },
         ],
         grid: 'grid-medi',
-        empty: { wirkstoff: '', handelsname: '', staerke: '', schema: '', bemerkung: '' },
+        empty: { medikament: '', schema: '' },
+    },
+    allergien: {
+        fields: [{ key: 'substanz', label: 'Allergie / Substanz', type: 'text' }],
+        grid: 'grid-single',
+        empty: { substanz: '' },
+    },
+    risikofaktoren: {
+        fields: [{ key: 'faktor', label: 'Risikofaktor', type: 'text' }],
+        grid: 'grid-single',
+        empty: { faktor: '' },
     },
 };
 
@@ -298,6 +250,13 @@ function setupButtons() {
         );
     });
 
+    document.getElementById('btn-faker-doctor').addEventListener('click', () => {
+        state.author = generateRandomDoctor();
+        saveState();
+        rebindAll();
+        setStatus(`Arzt generiert: ${state.author.title} ${state.author.givenName} ${state.author.familyName}`);
+    });
+
     document.getElementById('btn-reset').addEventListener('click', () => {
         if (!confirm('Formular auf Default-Werte zurücksetzen? (Aktuelle Eingaben gehen verloren)')) return;
         state = defaultState();
@@ -360,16 +319,33 @@ function rebindAll() {
         el.value = v ?? '';
     });
     Object.keys(LIST_TEMPLATES).forEach(renderList);
+    updatePvVisibility();
+}
+
+// Patientenverfügung — Felder je nach Status ein-/ausblenden
+function updatePvVisibility() {
+    const sel = document.getElementById('pv-status');
+    const details = document.getElementById('pv-details');
+    if (!sel || !details) return;
+    const hide = sel.value === 'keine' || sel.value === 'unbekannt';
+    details.classList.toggle('hidden', hide);
+}
+
+function setupPvVisibility() {
+    const sel = document.getElementById('pv-status');
+    if (!sel) return;
+    sel.addEventListener('change', updatePvVisibility);
+    updatePvVisibility();
 }
 
 // Init ----------------------------------------------------------------------
 function init() {
     document.getElementById('header-logo').src = LOGO_DATA_URI;
-    setupTabs();
     bindInputs();
     Object.keys(LIST_TEMPLATES).forEach(renderList);
     setupListAddButtons();
     setupButtons();
+    setupPvVisibility();
 }
 
 init();

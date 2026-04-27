@@ -23,10 +23,8 @@
         </div>
 
         <main>
-            <nav class="tabs" id="tabs"></nav>
-
             <!-- Patient -->
-            <section class="tab-panel" data-tab="patient">
+            <section class="form-section" data-tab="patient">
                 <div class="section-actions">
                     <button class="btn" id="btn-faker">🎲 Zufällige Stammdaten</button>
                 </div>
@@ -71,7 +69,7 @@
             </section>
 
             <!-- Aufenthalt -->
-            <section class="tab-panel" data-tab="aufenthalt">
+            <section class="form-section" data-tab="aufenthalt">
                 <h2>Krankenhaus</h2>
                 <div class="grid-2">
                     <label
@@ -112,6 +110,9 @@
                 </div>
 
                 <h2 style="margin-top: 20px">Behandelnde/r Ärztin/Arzt</h2>
+                <div class="section-actions">
+                    <button class="btn" id="btn-faker-doctor">🎲 Zufälligen Arzt</button>
+                </div>
                 <div class="grid-3">
                     <label
                         ><span class="label-text">Titel</span><input type="text" data-bind="author.title" placeholder="Dr."
@@ -131,7 +132,7 @@
             </section>
 
             <!-- Brieftext -->
-            <section class="tab-panel" data-tab="brieftext">
+            <section class="form-section" data-tab="brieftext">
                 <h2>Brieftext / Anschreiben</h2>
                 <p class="section-help">
                     Das einleitende Anschreiben des Briefes. Lass das Feld leer für einen automatisch generierten
@@ -144,7 +145,7 @@
             </section>
 
             <!-- Aufnahmegrund -->
-            <section class="tab-panel" data-tab="aufnahmegrund">
+            <section class="form-section" data-tab="aufnahmegrund">
                 <h2>Aufnahmegrund</h2>
                 <p class="section-help">Kurzbeschreibung des Grundes für die stationäre Aufnahme.</p>
                 <label>
@@ -154,15 +155,23 @@
             </section>
 
             <!-- Diagnosen -->
-            <section class="tab-panel" data-tab="diagnosen">
+            <section class="form-section" data-tab="diagnosen">
                 <h2>Diagnosen bei Entlassung</h2>
-                <p class="section-help">Pro Zeile eine Diagnose. ICD-10 und Seitigkeit optional.</p>
+                <p class="section-help">Pro Zeile eine Diagnose im Klartext.</p>
                 <div id="diagnosen-list" class="row-list"></div>
                 <button class="btn" data-add="diagnosen">+ Diagnose hinzufügen</button>
             </section>
 
+            <!-- Allergien -->
+            <section class="form-section" data-tab="allergien">
+                <h2>Allergien und Intoleranzen</h2>
+                <p class="section-help">Pro Zeile eine bekannte Allergie oder Unverträglichkeit.</p>
+                <div id="allergien-list" class="row-list"></div>
+                <button class="btn" data-add="allergien">+ Allergie hinzufügen</button>
+            </section>
+
             <!-- Anamnese -->
-            <section class="tab-panel" data-tab="anamnese">
+            <section class="form-section" data-tab="anamnese">
                 <h2>Anamnese / Vorerkrankungen</h2>
                 <p class="section-help">Bekannte Vorerkrankungen als Liste, ergänzend Freitext zur aktuellen Anamnese.</p>
                 <h2 style="font-size: 14px; margin: 8px 0">Vorerkrankungen</h2>
@@ -175,8 +184,18 @@
                 </label>
             </section>
 
+            <!-- Risikofaktoren -->
+            <section class="form-section" data-tab="risikofaktoren">
+                <h2>Risikofaktoren</h2>
+                <p class="section-help">
+                    Z.B. Nikotin-/Alkoholkonsum, familiäre Disposition, Adipositas, Bewegungsmangel, berufliche Exposition.
+                </p>
+                <div id="risikofaktoren-list" class="row-list"></div>
+                <button class="btn" data-add="risikofaktoren">+ Risikofaktor hinzufügen</button>
+            </section>
+
             <!-- Verlauf -->
-            <section class="tab-panel" data-tab="verlauf">
+            <section class="form-section" data-tab="verlauf">
                 <h2>Aufenthaltsverlauf</h2>
                 <p class="section-help">Verlauf der Behandlung — Operationen, Komplikationen, Therapiewechsel, etc.</p>
                 <label>
@@ -186,24 +205,62 @@
             </section>
 
             <!-- Medikation -->
-            <section class="tab-panel" data-tab="medikation">
+            <section class="form-section" data-tab="medikation">
                 <h2>Medikation bei Entlassung</h2>
                 <p class="section-help">
-                    Schema-Format: <code>1-0-1-0</code> (Morgen-Mittag-Abend-Nacht). Beispiel: <code>1-0-0</code> für nur
-                    morgens.
+                    Medikament inkl. Stärke (z.B. <code>Ramipril 5 mg</code>), Schema-Format:
+                    <code>1-0-1-0</code> (Morgen-Mittag-Abend-Nacht).
                 </p>
                 <div id="medikation-list" class="row-list"></div>
                 <button class="btn" data-add="medikation">+ Medikament hinzufügen</button>
             </section>
 
             <!-- Empfehlungen -->
-            <section class="tab-panel" data-tab="empfehlungen">
+            <section class="form-section" data-tab="empfehlungen">
                 <h2>Empfehlungen / Weiteres Procedere</h2>
                 <p class="section-help">Z.B. Nachkontrollen, Wundversorgung, Mobilisationshinweise, Verhaltensregeln.</p>
                 <label>
                     <span class="label-text">Empfehlungen</span>
                     <textarea data-bind="empfehlungen" rows="10"></textarea>
                 </label>
+            </section>
+
+            <!-- Patientenverfügung -->
+            <section class="form-section" data-tab="patientenverfuegung">
+                <h2>Patientenverfügungsstatus</h2>
+                <p class="section-help">
+                    Status einer eventuell vorliegenden Patientenverfügung. Weitere Felder erscheinen je nach Status.
+                </p>
+                <label>
+                    <span class="label-text">Status</span>
+                    <select data-bind="patientenverfuegung.status" id="pv-status">
+                        <option value="unbekannt">Unbekannt / nicht erhoben</option>
+                        <option value="keine">Keine Patientenverfügung vorhanden</option>
+                        <option value="beachtlich">Beachtliche Patientenverfügung</option>
+                        <option value="verbindlich">Verbindliche Patientenverfügung</option>
+                        <option value="vorsorgevollmacht">Vorsorgevollmacht vorhanden</option>
+                    </select>
+                </label>
+                <div id="pv-details">
+                    <div class="grid-2">
+                        <label>
+                            <span class="label-text">Hinterlegt bei / aufbewahrt durch</span>
+                            <input type="text" data-bind="patientenverfuegung.hinterlegtBei" placeholder="z.B. Hausarzt Dr. Müller, Angehörige" />
+                        </label>
+                        <label>
+                            <span class="label-text">Errichtungs-/Gültigkeitsdatum</span>
+                            <input type="date" data-bind="patientenverfuegung.datum" />
+                        </label>
+                        <label>
+                            <span class="label-text">Gültig bis</span>
+                            <input type="date" data-bind="patientenverfuegung.gueltigBis" />
+                        </label>
+                    </div>
+                    <label>
+                        <span class="label-text">Bemerkung / Inhalt</span>
+                        <textarea data-bind="patientenverfuegung.bemerkung" rows="4" placeholder="z.B. Ablehnung lebensverlängernder Maßnahmen, keine Reanimation, keine künstliche Ernährung..."></textarea>
+                    </label>
+                </div>
             </section>
         </main>
 

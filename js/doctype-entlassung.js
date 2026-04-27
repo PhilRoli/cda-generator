@@ -48,17 +48,14 @@ function sectionAufnahmegrund(state) {
 }
 
 function sectionAnamnese(state) {
-    // Vorerkrankungen können als Tabelle angezeigt werden, wenn vorhanden, plus Freitext
-    const hasList = Array.isArray(state.vorerkrankungen) && state.vorerkrankungen.length > 0;
-    const tablePart = hasList
-        ? tableFromRows({
-              headers: ['Vorerkrankung / Diagnose', 'Seit', 'Bemerkung'],
-              rows: state.vorerkrankungen.map((v) => [v.text, v.since || '', v.note || '']),
-              colWidths: ['', '20', '30'],
-          })
+    const items = Array.isArray(state.vorerkrankungen)
+        ? state.vorerkrankungen.map((v) => v.text).filter(Boolean)
+        : [];
+    const listPart = items.length
+        ? `<list>\n${items.map((t) => `<item>${escapeHtml(t)}</item>`).join('\n')}\n</list>`
         : '';
     const textPart = state.anamnese ? paragraphsFromText(state.anamnese) : '';
-    const narrative = [tablePart, textPart].filter(Boolean).join('\n') || '<paragraph/>';
+    const narrative = [listPart, textPart].filter(Boolean).join('\n') || '<paragraph/>';
     return renderSection({
         templateId: '1.2.40.0.34.11.2.2.2',
         code: '11329-0',
@@ -70,12 +67,9 @@ function sectionAnamnese(state) {
 
 function sectionDiagnosen(state) {
     const list = Array.isArray(state.diagnosen) ? state.diagnosen : [];
-    const narrative = list.length
-        ? tableFromRows({
-              headers: ['Diagnose', 'ICD-10', 'Seitigkeit'],
-              rows: list.map((d) => [d.text, d.icd || '', d.side || '']),
-              colWidths: ['', '15', '15'],
-          })
+    const items = list.map((d) => d.text).filter(Boolean);
+    const narrative = items.length
+        ? `<list>\n${items.map((t) => `<item>${escapeHtml(t)}</item>`).join('\n')}\n</list>`
         : '<paragraph>Keine Diagnose dokumentiert.</paragraph>';
     return renderSection({
         templateId: '1.2.40.0.34.11.2.2.7',
@@ -100,9 +94,9 @@ function sectionMedikation(state) {
     const list = Array.isArray(state.medikation) ? state.medikation : [];
     const narrative = list.length
         ? tableFromRows({
-              headers: ['Wirkstoff', 'Handelsname', 'Stärke', 'Schema (M-Mi-Ab-N)', 'Bemerkung'],
-              rows: list.map((m) => [m.wirkstoff, m.handelsname || '', m.staerke || '', m.schema || '', m.bemerkung || '']),
-              colWidths: ['', '', '12', '20', '25'],
+              headers: ['Medikament', 'Schema (M-Mi-Ab-N)'],
+              rows: list.map((m) => [m.medikament, m.schema || '']),
+              colWidths: ['', '25'],
           })
         : '<paragraph>Keine Medikation bei Entlassung.</paragraph>';
     return renderSection({
@@ -110,6 +104,72 @@ function sectionMedikation(state) {
         code: '10183-2',
         displayName: 'Hospital discharge medications',
         title: 'Medikation bei Entlassung',
+        narrative,
+    });
+}
+
+function sectionAllergien(state) {
+    const list = Array.isArray(state.allergien) ? state.allergien : [];
+    const items = list.map((a) => a.substanz).filter(Boolean);
+    const narrative = items.length
+        ? `<list>\n${items.map((t) => `<item>${escapeHtml(t)}</item>`).join('\n')}\n</list>`
+        : '<paragraph>Keine bekannten Allergien oder Intoleranzen.</paragraph>';
+    return renderSection({
+        templateId: '1.2.40.0.34.11.2.2.10',
+        code: '48765-2',
+        displayName: 'Allergies and adverse reactions Document',
+        title: 'Allergien und Intoleranzen',
+        narrative,
+    });
+}
+
+function sectionRisikofaktoren(state) {
+    const list = Array.isArray(state.risikofaktoren) ? state.risikofaktoren : [];
+    const items = list.map((r) => r.faktor).filter(Boolean);
+    const narrative = items.length
+        ? `<list>\n${items.map((t) => `<item>${escapeHtml(t)}</item>`).join('\n')}\n</list>`
+        : '<paragraph>Keine relevanten Risikofaktoren dokumentiert.</paragraph>';
+    return renderSection({
+        templateId: '1.2.40.0.34.11.2.2.11',
+        code: '75310-3',
+        displayName: 'Health concerns Document',
+        title: 'Risikofaktoren',
+        narrative,
+    });
+}
+
+function sectionPatientenverfuegung(state) {
+    const pv = state.patientenverfuegung || {};
+    if (pv.status === 'keine' || pv.status === 'unbekannt' || !pv.status) return '';
+    const statusLabels = {
+        beachtlich: 'Beachtliche Patientenverfügung',
+        verbindlich: 'Verbindliche Patientenverfügung',
+        vorsorgevollmacht: 'Vorsorgevollmacht vorhanden',
+    };
+    const statusText = statusLabels[pv.status] || pv.status;
+    const formatDate = (d) => {
+        if (!d) return '';
+        const dt = new Date(d);
+        if (isNaN(dt)) return d;
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${pad(dt.getDate())}.${pad(dt.getMonth() + 1)}.${dt.getFullYear()}`;
+    };
+    const rows = [['Status', statusText]];
+    if (pv.hinterlegtBei) rows.push(['Hinterlegt bei', pv.hinterlegtBei]);
+    if (pv.datum) rows.push(['Errichtungsdatum', formatDate(pv.datum)]);
+    if (pv.gueltigBis) rows.push(['Gültig bis', formatDate(pv.gueltigBis)]);
+    const tablePart = tableFromRows({
+        headers: ['Merkmal', 'Wert'],
+        rows,
+        colWidths: ['25', ''],
+    });
+    const textPart = pv.bemerkung ? paragraphsFromText(pv.bemerkung) : '';
+    const narrative = [tablePart, textPart].filter(Boolean).join('\n');
+    return renderSection({
+        templateId: '1.2.40.0.34.11.2.2.12',
+        code: '42348-3',
+        displayName: 'Advance directives',
+        title: 'Patientenverfügungsstatus',
         narrative,
     });
 }
@@ -131,11 +191,14 @@ export function buildEntlassungsbrief(state) {
         renderBrieftextSection(state),
         sectionAufnahmegrund(state),
         sectionDiagnosen(state),
+        sectionAllergien(state),
         sectionAnamnese(state),
+        sectionRisikofaktoren(state),
         sectionVerlauf(state),
         sectionMedikation(state),
         sectionEmpfehlungen(state),
-    ];
+        sectionPatientenverfuegung(state),
+    ].filter(Boolean);
 
     return composeDocument({
         documentMeta: {

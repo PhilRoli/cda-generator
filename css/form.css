@@ -68,41 +68,21 @@ main {
     padding: 16px 24px 80px;
 }
 
-nav.tabs {
-    display: flex;
-    gap: 2px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 16px;
-    overflow-x: auto;
-}
-
-nav.tabs button {
-    background: transparent;
-    border: none;
-    padding: 10px 16px;
-    font-size: 14px;
-    cursor: pointer;
-    color: var(--muted);
-    border-bottom: 2px solid transparent;
-    white-space: nowrap;
-}
-
-nav.tabs button.active {
-    color: var(--tab-active);
-    border-bottom-color: var(--accent);
-    font-weight: 600;
-}
-
-section.tab-panel {
-    display: none;
+section.form-section {
+    display: block;
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 20px;
+    margin-bottom: 16px;
 }
 
-section.tab-panel.active {
-    display: block;
+section.form-section.hidden {
+    display: none;
+}
+
+#pv-details.hidden {
+    display: none;
 }
 
 h2 {
@@ -163,19 +143,13 @@ textarea {
 }
 .grid-medi {
     display: grid;
-    grid-template-columns: 1.5fr 1.5fr 0.7fr 1fr 2fr 40px;
+    grid-template-columns: 3fr 1fr 40px;
     gap: 8px;
     align-items: end;
 }
-.grid-diag {
+.grid-single {
     display: grid;
-    grid-template-columns: 3fr 1fr 1fr 40px;
-    gap: 8px;
-    align-items: end;
-}
-.grid-vorerk {
-    display: grid;
-    grid-template-columns: 3fr 1fr 2fr 40px;
+    grid-template-columns: 1fr 40px;
     gap: 8px;
     align-items: end;
 }
@@ -229,8 +203,12 @@ button.btn.primary:hover {
 }
 
 button.btn.icon {
-    padding: 6px 8px;
-    font-size: 12px;
+    padding: 0;
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+    justify-content: center;
+    flex: none;
 }
 
 button.btn.danger {
