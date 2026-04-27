@@ -1,7 +1,7 @@
 // Wrapper um den ELGA CDA2PDF Konverter mit Übungs-spezifischen Optionen:
 //   - hideDocumentInformation()  → entfernt den "Zusätzliche Informationen"-Block
 //   - enableFullDocument() WIRD NICHT aufgerufen → "normale" (kürzere) PDF-Variante
-//   - setBannerText("ÜBUNGSZWECKE")  → Probe für Watermark-ähnlichen Hinweis
+//   - setBannerText("ÜBUNGSDOKUMENT")  → Probe für Watermark-ähnlichen Hinweis
 //
 // Aufruf (analog Demo):
 //   java -cp "CDA2PDFUebung.jar:CDA2PDF-API.jar:CDA2PDF-DEPS.jar" CDA2PDFUebung <in.xml> <out-dir/> <out.pdf>
@@ -27,7 +27,7 @@ public class CDA2PDFUebung {
         builder.setAuthUser("Übungs-Generator");
         // enableFullDocument() bewusst NICHT aufrufen → "normale" Variante
         builder.hideDocumentInformation();
-        builder.setBannerText("ÜBUNGSZWECKE — NUR FÜR TRAININGS!");
+        builder.setBannerText("ÜBUNGSDOKUMENT — NUR FÜR TRAININGS!");
 
         CDA2PDFConverter converter = new CDA2PDFConverter(builder);
         try (FileInputStream in = new FileInputStream(input)) {

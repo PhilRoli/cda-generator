@@ -2223,7 +2223,7 @@ function start() {
       </head>
 
       <body>
-      <!-- ÜBUNGSZWECKE-Wasserzeichen — diagonal, hellgrau, fixiert, druckbar.
+      <!-- ÜBUNGSDOKUMENT-Wasserzeichen — diagonal, hellgrau, fixiert, druckbar.
            Eingefügt durch elga-stylesheet-uebung.xsl (Modifikation des ELGA Referenz-Stylesheet
            v1.13.1+20251029). Permanent sichtbar, nicht aus dem CDA-Inhalt entfernbar. -->
       <style type="text/css" media="screen,print">
@@ -2254,7 +2254,7 @@ function start() {
           .uebung-watermark &gt; div { color: rgba(0, 0, 0, 0.10); }
         }
       </style>
-      <div class="uebung-watermark" aria-hidden="true"><div>ÜBUNGSZWECKE</div></div>
+      <div class="uebung-watermark" aria-hidden="true"><div>ÜBUNGSDOKUMENT</div></div>
       <div class="outerContainer" id="elgadocument">
         <div class="bodyContentContainer">
 
