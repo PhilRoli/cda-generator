@@ -5,6 +5,11 @@ import { buildEntlassungsbrief } from './doctype-entlassung.js';
 import { LOGO_DATA_URI } from './logo-base64.js';
 
 const STORAGE_KEY = 'cda-uebung:last';
+const CLOUD_USER_KEY = 'cda-uebung:cloud-username';
+const SCENARIO_SOURCE_KEY = 'cda-uebung:scenario-source';
+
+let cloudScenarios = [];
+let selectedCloudScenarioId = null;
 
 // Sinnvolle Default-Inhalte (RD-Übungs-tauglich, leicht anpassbar)
 function defaultState() {
@@ -240,6 +245,261 @@ function setStatus(msg) {
     document.getElementById('status').textContent = msg || '';
 }
 
+function cloudScenarioTitleSuggestion() {
+    const family = (state.patient?.familyName || 'anonym').toLowerCase();
+    const date = (state.documentDate || new Date().toISOString()).slice(0, 10);
+    return `szenario-${family}-${date}`;
+}
+
+function saveLocalScenario() {
+    const filename = `szenario-${(state.patient.familyName || 'anonym').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.json`;
+    downloadFile(filename, JSON.stringify(state, null, 2), 'application/json');
+    setStatus(`Lokales Szenario gespeichert: ${filename}`);
+}
+
+async function loadLocalScenarioFromFile(file) {
+    if (!file) return;
+    try {
+        const text = await file.text();
+        const loaded = JSON.parse(text);
+        state = Object.assign(defaultState(), loaded);
+        saveState();
+        rebindAll();
+        setStatus(`Lokales Szenario geladen: ${file.name}`);
+    } catch (err) {
+        setStatus(`Fehler beim lokalen Laden: ${err.message}`);
+    }
+}
+
+async function apiJson(url, options = {}) {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+        let message = `HTTP ${response.status}`;
+        try {
+            const body = await response.json();
+            if (body?.message) message = body.message;
+        } catch {}
+        throw new Error(message);
+    }
+    if (response.status === 204) return null;
+    return response.json();
+}
+
+async function apiPdf(url, options = {}) {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+        let message = `HTTP ${response.status}`;
+        try {
+            const body = await response.json();
+            if (body?.message) message = body.message;
+        } catch {}
+        throw new Error(message);
+    }
+    return response.blob();
+}
+
+function getCloudUsername() {
+    const input = document.getElementById('cloud-username');
+    return input?.value?.trim() || '';
+}
+
+function renderCloudScenarioSelect() {
+    const select = document.getElementById('cloud-scenario-select');
+    if (!select) return;
+    const keepId = selectedCloudScenarioId;
+    select.innerHTML = '';
+
+    if (!cloudScenarios.length) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'Keine Cloud-Szenarien vorhanden';
+        select.appendChild(option);
+        selectedCloudScenarioId = null;
+        return;
+    }
+
+    cloudScenarios.forEach((scenario) => {
+        const option = document.createElement('option');
+        option.value = scenario.id;
+        option.textContent = `${scenario.title} · ${scenario.updatedAt}`;
+        if (keepId && keepId === scenario.id) option.selected = true;
+        select.appendChild(option);
+    });
+
+    selectedCloudScenarioId = select.value || cloudScenarios[0].id;
+    if (selectedCloudScenarioId) select.value = selectedCloudScenarioId;
+}
+
+async function refreshCloudScenarios(options = {}) {
+    const { silent = false } = options;
+    const username = getCloudUsername();
+    if (!username) {
+        cloudScenarios = [];
+        renderCloudScenarioSelect();
+        if (!silent) setStatus('Bitte zuerst einen Benutzernamen für Cloud-Szenarien eingeben.');
+        return;
+    }
+    const list = await apiJson(`/api/scenarios?username=${encodeURIComponent(username)}`);
+    cloudScenarios = list;
+    renderCloudScenarioSelect();
+    if (!silent) setStatus(`Cloud-Liste aktualisiert: ${cloudScenarios.length} Szenario(s).`);
+}
+
+async function saveCloudScenario() {
+    const username = getCloudUsername();
+    if (!username) {
+        setStatus('Bitte zuerst einen Benutzernamen für Cloud-Speicherung eingeben.');
+        return;
+    }
+
+    const defaultTitle = cloudScenarioTitleSuggestion();
+    const title = prompt('Titel für das Cloud-Szenario:', defaultTitle);
+    if (title === null) return;
+
+    const payload = {
+        id: selectedCloudScenarioId || undefined,
+        username,
+        title: title.trim() || defaultTitle,
+        state,
+    };
+
+    const saved = await apiJson('/api/scenarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+
+    selectedCloudScenarioId = saved.id;
+    await refreshCloudScenarios();
+    setStatus(`Cloud-Szenario gespeichert: ${saved.title}`);
+}
+
+async function loadCloudScenario() {
+    const username = getCloudUsername();
+    if (!username) {
+        setStatus('Bitte zuerst einen Benutzernamen eingeben.');
+        return;
+    }
+    if (!selectedCloudScenarioId) {
+        setStatus('Bitte zuerst ein Cloud-Szenario auswählen.');
+        return;
+    }
+
+    const detail = await apiJson(
+        `/api/scenarios/${encodeURIComponent(selectedCloudScenarioId)}?username=${encodeURIComponent(username)}`,
+    );
+    state = Object.assign(defaultState(), detail.state || {});
+    saveState();
+    rebindAll();
+    setStatus(`Cloud-Szenario geladen: ${detail.title}`);
+}
+
+async function deleteCloudScenarioAsAdmin() {
+    if (!selectedCloudScenarioId) {
+        setStatus('Bitte zuerst ein Cloud-Szenario auswählen.');
+        return;
+    }
+    const token = prompt('Admin-Token eingeben:');
+    if (token === null) return;
+    const trimmedToken = token.trim();
+    if (!trimmedToken) {
+        setStatus('Bitte Admin-Token eingeben.');
+        return;
+    }
+    if (!confirm('Ausgewähltes Cloud-Szenario als Admin löschen?')) return;
+
+    await apiJson(`/api/admin/scenarios/${encodeURIComponent(selectedCloudScenarioId)}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${trimmedToken}` },
+    });
+    selectedCloudScenarioId = null;
+    await refreshCloudScenarios();
+    setStatus('Cloud-Szenario per Admin-Recht gelöscht.');
+}
+
+function updateScenarioSourceVisibility() {
+    const sourceSelect = document.getElementById('scenario-source');
+    const cloudUsernameWrap = document.getElementById('cloud-username-wrap');
+    const localActions = document.getElementById('scenario-local-actions');
+    const cloudActions = document.getElementById('scenario-cloud-actions');
+    const isCloud = sourceSelect.value === 'cloud';
+
+    cloudUsernameWrap.classList.toggle('hidden', !isCloud);
+    localActions.classList.toggle('hidden', isCloud);
+    cloudActions.classList.toggle('hidden', !isCloud);
+}
+
+function setupScenarioManager() {
+    const sourceSelect = document.getElementById('scenario-source');
+    const usernameInput = document.getElementById('cloud-username');
+    const localSaveBtn = document.getElementById('btn-local-save');
+    const localLoadBtn = document.getElementById('btn-local-load');
+    const select = document.getElementById('cloud-scenario-select');
+    const fileInput = document.getElementById('file-load');
+
+    sourceSelect.value = localStorage.getItem(SCENARIO_SOURCE_KEY) || 'local';
+    usernameInput.value = localStorage.getItem(CLOUD_USER_KEY) || '';
+
+    sourceSelect.addEventListener('change', () => {
+        localStorage.setItem(SCENARIO_SOURCE_KEY, sourceSelect.value);
+        updateScenarioSourceVisibility();
+        if (sourceSelect.value === 'cloud') {
+            refreshCloudScenarios({ silent: true }).catch(() => {
+                renderCloudScenarioSelect();
+            });
+        }
+    });
+    usernameInput.addEventListener('input', () => localStorage.setItem(CLOUD_USER_KEY, usernameInput.value.trim()));
+    select.addEventListener('change', () => {
+        selectedCloudScenarioId = select.value || null;
+    });
+    localSaveBtn.addEventListener('click', saveLocalScenario);
+    localLoadBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        await loadLocalScenarioFromFile(file);
+        fileInput.value = '';
+    });
+
+    document.getElementById('btn-cloud-refresh').addEventListener('click', async () => {
+        try {
+            await refreshCloudScenarios();
+        } catch (err) {
+            setStatus(`Cloud-Refresh fehlgeschlagen: ${err.message}`);
+        }
+    });
+    document.getElementById('btn-cloud-save').addEventListener('click', async () => {
+        try {
+            await saveCloudScenario();
+        } catch (err) {
+            setStatus(`Cloud-Speicherung fehlgeschlagen: ${err.message}`);
+        }
+    });
+    document.getElementById('btn-cloud-load').addEventListener('click', async () => {
+        try {
+            await loadCloudScenario();
+        } catch (err) {
+            setStatus(`Cloud-Laden fehlgeschlagen: ${err.message}`);
+        }
+    });
+    document.getElementById('btn-cloud-delete-admin').addEventListener('click', async () => {
+        try {
+            await deleteCloudScenarioAsAdmin();
+        } catch (err) {
+            setStatus(`Admin-Löschen fehlgeschlagen: ${err.message}`);
+        }
+    });
+
+    updateScenarioSourceVisibility();
+    if (sourceSelect.value === 'cloud') {
+        refreshCloudScenarios({ silent: true }).catch(() => {
+            renderCloudScenarioSelect();
+        });
+    } else {
+        renderCloudScenarioSelect();
+    }
+}
+
 function setupButtons() {
     document.getElementById('btn-faker').addEventListener('click', () => {
         state.patient = generateRandomPatient();
@@ -265,40 +525,38 @@ function setupButtons() {
         setStatus('Formular zurückgesetzt.');
     });
 
-    document.getElementById('btn-generate').addEventListener('click', () => {
+    document.getElementById('btn-generate-xml').addEventListener('click', () => {
         const xml = buildEntlassungsbrief(state);
         const filename = `entlassungsbrief-${(state.patient.familyName || 'anonym').toLowerCase()}-${(state.documentDate || '').slice(0, 10)}.xml`;
         downloadFile(filename, xml, 'application/xml');
-        setStatus(`Generiert: ${filename}. Datei in den Ordner mit elga-stylesheet-uebung.xsl legen und im Browser öffnen.`);
+        setStatus(`XML generiert: ${filename}`);
     });
 
-    document.getElementById('btn-save').addEventListener('click', () => {
-        const filename = `szenario-${(state.patient.familyName || 'anonym').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.json`;
-        downloadFile(filename, JSON.stringify(state, null, 2), 'application/json');
-        setStatus(`Szenario gespeichert: ${filename}`);
-    });
-
-    const fileInput = document.getElementById('file-load');
-    document.getElementById('btn-load').addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+    document.getElementById('btn-generate').addEventListener('click', async () => {
+        const xml = buildEntlassungsbrief(state);
+        const xmlFilename = `entlassungsbrief-${(state.patient.familyName || 'anonym').toLowerCase()}-${(state.documentDate || '').slice(0, 10)}.xml`;
+        const pdfFilename = xmlFilename.replace(/\.xml$/i, '.pdf');
         try {
-            const text = await file.text();
-            const loaded = JSON.parse(text);
-            state = Object.assign(defaultState(), loaded);
-            saveState();
-            rebindAll();
-            setStatus(`Szenario geladen: ${file.name}`);
+            const pdfBlob = await apiPdf('/api/pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ xml, fileName: pdfFilename }),
+            });
+            downloadBlob(pdfFilename, pdfBlob);
+            setStatus(`PDF generiert: ${pdfFilename}`);
         } catch (err) {
-            setStatus(`Fehler beim Laden: ${err.message}`);
+            setStatus(`PDF-Generierung fehlgeschlagen: ${err.message}`);
         }
-        fileInput.value = '';
     });
+
 }
 
 function downloadFile(filename, content, mime) {
     const blob = new Blob([content], { type: mime });
+    downloadBlob(filename, blob);
+}
+
+function downloadBlob(filename, blob) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -345,6 +603,7 @@ function init() {
     Object.keys(LIST_TEMPLATES).forEach(renderList);
     setupListAddButtons();
     setupButtons();
+    setupCloudStorage();
     setupPvVisibility();
 }
 
