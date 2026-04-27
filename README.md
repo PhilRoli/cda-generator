@@ -63,7 +63,7 @@ Diese Umsetzung folgt deiner Server-Strategie (Caddy + Docker Compose).
 ### 1. App-Dateien auf den Server bringen
 
 ```bash
-./deploy.sh
+DEPLOY_REMOTE='deploy@<server-ip>' ./deploy.sh
 ```
 
 Das Script:
@@ -71,6 +71,10 @@ Das Script:
 - baut `dist/` (statisches Frontend)
 - synced nach `/opt/apps/cda-uebung`
 - baut/restartet den API-Container mit `docker compose up -d --build`
+
+Optional:
+
+- `DEPLOY_DIR=/opt/apps/cda-uebung` (Standardwert, kann überschrieben werden)
 
 ### 2. Server-`.env` anlegen
 

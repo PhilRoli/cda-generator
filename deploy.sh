@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REMOTE="deploy@46.225.72.0"
-REMOTE_DIR="/opt/apps/cda-uebung"
+REMOTE="${DEPLOY_REMOTE:-}"
+REMOTE_DIR="${DEPLOY_DIR:-/opt/apps/cda-uebung}"
+
+if [[ -z "$REMOTE" ]]; then
+  echo "DEPLOY_REMOTE ist nicht gesetzt (z.B. deploy@203.0.113.10)." >&2
+  echo "Beispiel: DEPLOY_REMOTE='deploy@203.0.113.10' ./deploy.sh" >&2
+  exit 1
+fi
 
 echo "→ Building dist/"
 ./scripts/build-dist.sh

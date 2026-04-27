@@ -54,6 +54,25 @@ header.app-header .spacer {
     flex: 1;
 }
 
+.header-email-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--text);
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.header-email-btn:hover {
+    background: #f0f0f3;
+}
+
 .banner-uebung {
     background: var(--warn-bg);
     border-bottom: 1px solid var(--warn-border);
