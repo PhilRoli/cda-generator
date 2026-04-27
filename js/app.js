@@ -603,7 +603,7 @@ function init() {
     Object.keys(LIST_TEMPLATES).forEach(renderList);
     setupListAddButtons();
     setupButtons();
-    setupCloudStorage();
+    setupScenarioManager();
     setupPvVisibility();
 }
 
