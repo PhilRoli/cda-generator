@@ -34,12 +34,21 @@ public class ScenarioController {
             .toList();
     }
 
+    @GetMapping("/scenarios/all")
+    public List<ScenarioSummaryResponse> listAll() {
+        return scenarioService.listAll().stream()
+            .map(ScenarioSummaryResponse::from)
+            .toList();
+    }
+
     @GetMapping("/scenarios/{id}")
     public ScenarioDetailResponse get(
         @PathVariable("id") String id,
-        @RequestParam("username") @NotBlank String username
+        @RequestParam(value = "username", required = false) String username
     ) {
-        ScenarioRecord record = scenarioService.getByIdForUser(id, username);
+        ScenarioRecord record = (username != null && !username.isBlank())
+            ? scenarioService.getByIdForUser(id, username)
+            : scenarioService.getByIdPublic(id);
         return ScenarioDetailResponse.from(record, scenarioService.payloadToJson(record));
     }
 

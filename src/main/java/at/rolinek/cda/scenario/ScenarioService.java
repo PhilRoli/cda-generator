@@ -37,6 +37,15 @@ public class ScenarioService {
         return repository.listAll();
     }
 
+    public List<ScenarioRecord> listAll() {
+        return repository.listAll();
+    }
+
+    public ScenarioRecord getByIdPublic(String id) {
+        return repository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Szenario nicht gefunden."));
+    }
+
     public ScenarioRecord getByIdForUser(String id, String username) {
         String normalized = normalizeUsername(username);
         ScenarioRecord record = repository.findById(id)
