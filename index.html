@@ -115,6 +115,29 @@
             <!-- Aufenthalt -->
             <section class="form-section" data-tab="aufenthalt">
                 <h2>Krankenhaus</h2>
+                <div class="grid-2" style="margin-bottom: 12px;">
+                    <label>
+                        <span class="label-text">Bundesland</span>
+                        <select id="org-bundesland">
+                            <option value="">— Bundesland wählen —</option>
+                            <option value="W">Wien</option>
+                            <option value="NOE">Niederösterreich</option>
+                            <option value="OOE">Oberösterreich</option>
+                            <option value="S">Salzburg</option>
+                            <option value="ST">Steiermark</option>
+                            <option value="T">Tirol</option>
+                            <option value="V">Vorarlberg</option>
+                            <option value="K">Kärnten</option>
+                            <option value="B">Burgenland</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span class="label-text">Krankenhaus (Quick-Select)</span>
+                        <select id="org-hospital-select" disabled>
+                            <option value="">— Bundesland zuerst wählen —</option>
+                        </select>
+                    </label>
+                </div>
                 <div class="grid-2">
                     <label
                         ><span class="label-text">Name der Einrichtung</span

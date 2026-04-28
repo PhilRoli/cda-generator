@@ -3,6 +3,7 @@
 import { generateRandomPatient, generateRandomDoctor } from './faker.js';
 import { buildEntlassungsbrief } from './doctype-entlassung.js';
 import { LOGO_DATA_URI } from './logo-base64.js';
+import { HOSPITALS_BY_BUNDESLAND } from './hospitals.js';
 
 const APP_VERSION = '1.1.0';
 
@@ -735,6 +736,43 @@ function setupPvVisibility() {
     updatePvVisibility();
 }
 
+function setupHospitalSelector() {
+    const blSelect = document.getElementById('org-bundesland');
+    const hospSelect = document.getElementById('org-hospital-select');
+    if (!blSelect || !hospSelect) return;
+
+    blSelect.addEventListener('change', () => {
+        const bl = blSelect.value;
+        hospSelect.innerHTML = '<option value="">Krankenhaus auswählen …</option>';
+        hospSelect.disabled = !bl;
+        if (!bl) return;
+        (HOSPITALS_BY_BUNDESLAND[bl] || []).forEach((h, i) => {
+            const opt = document.createElement('option');
+            opt.value = String(i);
+            opt.textContent = h.name;
+            hospSelect.appendChild(opt);
+        });
+    });
+
+    hospSelect.addEventListener('change', () => {
+        const bl = blSelect.value;
+        const idx = Number(hospSelect.value);
+        if (!bl || isNaN(idx) || hospSelect.value === '') return;
+        const h = (HOSPITALS_BY_BUNDESLAND[bl] || [])[idx];
+        if (!h) return;
+        state.organization.name = h.name;
+        state.organization.phone = h.phone;
+        state.organization.address.street = h.street;
+        state.organization.address.houseNumber = h.houseNumber;
+        state.organization.address.postalCode = h.postalCode;
+        state.organization.address.city = h.city;
+        state.organization.address.country = 'A';
+        saveState();
+        rebindAll();
+        setStatus(`Krankenhaus ausgewählt: ${h.name}`);
+    });
+}
+
 // Init ----------------------------------------------------------------------
 function init() {
     document.getElementById('header-logo').src = LOGO_DATA_URI;
@@ -745,6 +783,7 @@ function init() {
     setupButtons();
     setupScenarioManager();
     setupPvVisibility();
+    setupHospitalSelector();
     const badge = document.getElementById('version-badge');
     const changelogDialog = document.getElementById('changelog-dialog');
     if (badge && changelogDialog) {
