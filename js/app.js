@@ -757,7 +757,7 @@ function setupHospitalSelector() {
     hospSelect.addEventListener('change', () => {
         const bl = blSelect.value;
         const idx = Number(hospSelect.value);
-        if (!bl || isNaN(idx) || hospSelect.value === '') return;
+        if (!bl || hospSelect.value === '') return;
         const h = (HOSPITALS_BY_BUNDESLAND[bl] || [])[idx];
         if (!h) return;
         state.organization.name = h.name;
