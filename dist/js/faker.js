@@ -97,51 +97,51 @@ const NACHNAMEN = [
 
 const ADRESSEN = [
     // Wien
-    { street: 'Mariahilfer Straße', plz: '1060', city: 'Wien' },
-    { street: 'Währinger Straße', plz: '1180', city: 'Wien' },
-    { street: 'Simmeringer Hauptstraße', plz: '1110', city: 'Wien' },
-    { street: 'Floridsdorfer Hauptstraße', plz: '1210', city: 'Wien' },
+    { bundesland: 'W', street: 'Mariahilfer Straße', plz: '1060', city: 'Wien' },
+    { bundesland: 'W', street: 'Währinger Straße', plz: '1180', city: 'Wien' },
+    { bundesland: 'W', street: 'Simmeringer Hauptstraße', plz: '1110', city: 'Wien' },
+    { bundesland: 'W', street: 'Floridsdorfer Hauptstraße', plz: '1210', city: 'Wien' },
     // Niederösterreich
-    { street: 'Kremser Gasse', plz: '3500', city: 'Krems an der Donau' },
-    { street: 'Rathausplatz', plz: '3100', city: 'St. Pölten' },
-    { street: 'Hauptstraße', plz: '2700', city: 'Wiener Neustadt' },
-    { street: 'Badener Straße', plz: '2380', city: 'Perchtoldsdorf' },
+    { bundesland: 'NOE', street: 'Kremser Gasse', plz: '3500', city: 'Krems an der Donau' },
+    { bundesland: 'NOE', street: 'Rathausplatz', plz: '3100', city: 'St. Pölten' },
+    { bundesland: 'NOE', street: 'Hauptstraße', plz: '2700', city: 'Wiener Neustadt' },
+    { bundesland: 'NOE', street: 'Badener Straße', plz: '2380', city: 'Perchtoldsdorf' },
     // Oberösterreich
-    { street: 'Landstraße', plz: '4020', city: 'Linz' },
-    { street: 'Stadtplatz', plz: '4600', city: 'Wels' },
-    { street: 'Stadtplatz', plz: '4400', city: 'Steyr' },
-    { street: 'Bahnhofstraße', plz: '4210', city: 'Gallneukirchen' },
+    { bundesland: 'OOE', street: 'Landstraße', plz: '4020', city: 'Linz' },
+    { bundesland: 'OOE', street: 'Stadtplatz', plz: '4600', city: 'Wels' },
+    { bundesland: 'OOE', street: 'Stadtplatz', plz: '4400', city: 'Steyr' },
+    { bundesland: 'OOE', street: 'Bahnhofstraße', plz: '4210', city: 'Gallneukirchen' },
     // Salzburg
-    { street: 'Linzer Bundesstraße', plz: '5023', city: 'Salzburg' },
-    { street: 'Münchner Bundesstraße', plz: '5020', city: 'Salzburg' },
-    { street: 'Alpenstraße', plz: '5020', city: 'Salzburg' },
-    { street: 'Marktplatz', plz: '5400', city: 'Hallein' },
-    { street: 'Bahnhofstraße', plz: '5500', city: 'Bischofshofen' },
+    { bundesland: 'S', street: 'Linzer Bundesstraße', plz: '5023', city: 'Salzburg' },
+    { bundesland: 'S', street: 'Münchner Bundesstraße', plz: '5020', city: 'Salzburg' },
+    { bundesland: 'S', street: 'Alpenstraße', plz: '5020', city: 'Salzburg' },
+    { bundesland: 'S', street: 'Marktplatz', plz: '5400', city: 'Hallein' },
+    { bundesland: 'S', street: 'Bahnhofstraße', plz: '5500', city: 'Bischofshofen' },
     // Steiermark
-    { street: 'Herrengasse', plz: '8010', city: 'Graz' },
-    { street: 'Annenstraße', plz: '8020', city: 'Graz' },
-    { street: 'Hauptplatz', plz: '8530', city: 'Deutschlandsberg' },
-    { street: 'Hauptstraße', plz: '8605', city: 'Kapfenberg' },
+    { bundesland: 'ST', street: 'Herrengasse', plz: '8010', city: 'Graz' },
+    { bundesland: 'ST', street: 'Annenstraße', plz: '8020', city: 'Graz' },
+    { bundesland: 'ST', street: 'Hauptplatz', plz: '8530', city: 'Deutschlandsberg' },
+    { bundesland: 'ST', street: 'Hauptstraße', plz: '8605', city: 'Kapfenberg' },
     // Tirol
-    { street: 'Maria-Theresien-Straße', plz: '6020', city: 'Innsbruck' },
-    { street: 'Stadtplatz', plz: '6130', city: 'Schwaz' },
-    { street: 'Unterer Stadtplatz', plz: '6330', city: 'Kufstein' },
-    { street: 'Bahnhofstraße', plz: '6300', city: 'Wörgl' },
+    { bundesland: 'T', street: 'Maria-Theresien-Straße', plz: '6020', city: 'Innsbruck' },
+    { bundesland: 'T', street: 'Stadtplatz', plz: '6130', city: 'Schwaz' },
+    { bundesland: 'T', street: 'Unterer Stadtplatz', plz: '6330', city: 'Kufstein' },
+    { bundesland: 'T', street: 'Bahnhofstraße', plz: '6300', city: 'Wörgl' },
     // Vorarlberg
-    { street: 'Rathausstraße', plz: '6900', city: 'Bregenz' },
-    { street: 'Marktstraße', plz: '6850', city: 'Dornbirn' },
-    { street: 'Marktgasse', plz: '6800', city: 'Feldkirch' },
-    { street: 'Hauptstraße', plz: '6830', city: 'Rankweil' },
+    { bundesland: 'V', street: 'Rathausstraße', plz: '6900', city: 'Bregenz' },
+    { bundesland: 'V', street: 'Marktstraße', plz: '6850', city: 'Dornbirn' },
+    { bundesland: 'V', street: 'Marktgasse', plz: '6800', city: 'Feldkirch' },
+    { bundesland: 'V', street: 'Hauptstraße', plz: '6830', city: 'Rankweil' },
     // Kärnten
-    { street: 'Alter Platz', plz: '9020', city: 'Klagenfurt am Wörthersee' },
-    { street: 'Hauptplatz', plz: '9500', city: 'Villach' },
-    { street: 'Hauptstraße', plz: '9400', city: 'Wolfsberg' },
-    { street: 'Bahnhofstraße', plz: '9300', city: 'St. Veit an der Glan' },
+    { bundesland: 'K', street: 'Alter Platz', plz: '9020', city: 'Klagenfurt am Wörthersee' },
+    { bundesland: 'K', street: 'Hauptplatz', plz: '9500', city: 'Villach' },
+    { bundesland: 'K', street: 'Hauptstraße', plz: '9400', city: 'Wolfsberg' },
+    { bundesland: 'K', street: 'Bahnhofstraße', plz: '9300', city: 'St. Veit an der Glan' },
     // Burgenland
-    { street: 'Esterházystraße', plz: '7000', city: 'Eisenstadt' },
-    { street: 'Hauptstraße', plz: '7400', city: 'Oberwart' },
-    { street: 'Hauptplatz', plz: '7350', city: 'Oberpullendorf' },
-    { street: 'Hauptstraße', plz: '7100', city: 'Neusiedl am See' },
+    { bundesland: 'B', street: 'Esterházystraße', plz: '7000', city: 'Eisenstadt' },
+    { bundesland: 'B', street: 'Hauptstraße', plz: '7400', city: 'Oberwart' },
+    { bundesland: 'B', street: 'Hauptplatz', plz: '7350', city: 'Oberpullendorf' },
+    { bundesland: 'B', street: 'Hauptstraße', plz: '7100', city: 'Neusiedl am See' },
 ];
 
 function pick(arr) {
@@ -195,13 +195,14 @@ function generateSvnr(birthDate) {
     return `100${0}${dd}${mm}${yy}`;
 }
 
-export function generateRandomPatient() {
+export function generateRandomPatient(bundesland = null) {
     const gender = Math.random() < 0.5 ? 'M' : 'F';
     const givenName = pick(gender === 'M' ? VORNAMEN_M : VORNAMEN_F);
     const familyName = pick(NACHNAMEN);
     const birthDate = randomBirthDate();
     const svnr = generateSvnr(birthDate);
-    const adr = pick(ADRESSEN);
+    const pool = bundesland ? ADRESSEN.filter((a) => a.bundesland === bundesland) : ADRESSEN;
+    const adr = pick(pool.length ? pool : ADRESSEN);
     const houseNumber = String(randInt(1, 120));
     const phoneArea = pick(['0664', '0660', '0676', '0681', '0699']);
     const phoneRest = String(randInt(1000000, 9999999));
