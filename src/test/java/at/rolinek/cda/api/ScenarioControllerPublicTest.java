@@ -49,4 +49,24 @@ class ScenarioControllerPublicTest {
             .andExpect(jsonPath("$.username").value("testuser"))
             .andExpect(jsonPath("$.title").value("Szenario A"));
     }
+
+    @Test
+    void getById_withUsername_delegatesToOwnerCheck() throws Exception {
+        given(scenarioService.getByIdForUser("id1", "testuser")).willReturn(SAMPLE);
+        given(scenarioService.payloadToJson(any())).willReturn(new ObjectMapper().readTree("{}"));
+
+        mvc.perform(get("/api/scenarios/id1").param("username", "testuser"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.username").value("testuser"));
+    }
+
+    @Test
+    void getById_notFound_returns404() throws Exception {
+        given(scenarioService.getByIdPublic("missing"))
+            .willThrow(new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.NOT_FOUND, "Szenario nicht gefunden."));
+
+        mvc.perform(get("/api/scenarios/missing"))
+            .andExpect(status().isNotFound());
+    }
 }

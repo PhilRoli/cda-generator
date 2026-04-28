@@ -34,7 +34,7 @@ public class ScenarioService {
 
     public List<ScenarioRecord> listAllForAdmin(String bearerToken) {
         requireAdminToken(bearerToken);
-        return repository.listAll();
+        return listAll();
     }
 
     public List<ScenarioRecord> listAll() {
