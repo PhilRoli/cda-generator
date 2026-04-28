@@ -95,23 +95,53 @@ const NACHNAMEN = [
     'Schiller',
 ];
 
-// Reale Salzburger Straßen — generischer Mix aus Stadt/Land
 const ADRESSEN = [
+    // Wien
+    { street: 'Mariahilfer Straße', plz: '1060', city: 'Wien' },
+    { street: 'Währinger Straße', plz: '1180', city: 'Wien' },
+    { street: 'Simmeringer Hauptstraße', plz: '1110', city: 'Wien' },
+    { street: 'Floridsdorfer Hauptstraße', plz: '1210', city: 'Wien' },
+    // Niederösterreich
+    { street: 'Kremser Gasse', plz: '3500', city: 'Krems an der Donau' },
+    { street: 'Rathausplatz', plz: '3100', city: 'St. Pölten' },
+    { street: 'Hauptstraße', plz: '2700', city: 'Wiener Neustadt' },
+    { street: 'Badener Straße', plz: '2380', city: 'Perchtoldsdorf' },
+    // Oberösterreich
+    { street: 'Landstraße', plz: '4020', city: 'Linz' },
+    { street: 'Stadtplatz', plz: '4600', city: 'Wels' },
+    { street: 'Stadtplatz', plz: '4400', city: 'Steyr' },
+    { street: 'Bahnhofstraße', plz: '4210', city: 'Gallneukirchen' },
+    // Salzburg
     { street: 'Linzer Bundesstraße', plz: '5023', city: 'Salzburg' },
     { street: 'Münchner Bundesstraße', plz: '5020', city: 'Salzburg' },
-    { street: 'Müllner Hauptstraße', plz: '5020', city: 'Salzburg' },
     { street: 'Alpenstraße', plz: '5020', city: 'Salzburg' },
-    { street: 'Neutorstraße', plz: '5020', city: 'Salzburg' },
-    { street: 'Rainerstraße', plz: '5020', city: 'Salzburg' },
-    { street: 'Hellbrunner Straße', plz: '5020', city: 'Salzburg' },
-    { street: 'Sterneckstraße', plz: '5020', city: 'Salzburg' },
-    { street: 'Maxglaner Hauptstraße', plz: '5020', city: 'Salzburg' },
-    { street: 'Hauptstraße', plz: '5400', city: 'Hallein' },
-    { street: 'Marktstraße', plz: '5440', city: 'Golling an der Salzach' },
+    { street: 'Marktplatz', plz: '5400', city: 'Hallein' },
     { street: 'Bahnhofstraße', plz: '5500', city: 'Bischofshofen' },
-    { street: 'Mozartstraße', plz: '5020', city: 'Salzburg' },
-    { street: 'Schwarzstraße', plz: '5020', city: 'Salzburg' },
-    { street: 'Gaisbergstraße', plz: '5020', city: 'Salzburg' },
+    // Steiermark
+    { street: 'Herrengasse', plz: '8010', city: 'Graz' },
+    { street: 'Annenstraße', plz: '8020', city: 'Graz' },
+    { street: 'Hauptplatz', plz: '8530', city: 'Deutschlandsberg' },
+    { street: 'Hauptstraße', plz: '8605', city: 'Kapfenberg' },
+    // Tirol
+    { street: 'Maria-Theresien-Straße', plz: '6020', city: 'Innsbruck' },
+    { street: 'Stadtplatz', plz: '6130', city: 'Schwaz' },
+    { street: 'Unterer Stadtplatz', plz: '6330', city: 'Kufstein' },
+    { street: 'Bahnhofstraße', plz: '6300', city: 'Wörgl' },
+    // Vorarlberg
+    { street: 'Rathausstraße', plz: '6900', city: 'Bregenz' },
+    { street: 'Marktstraße', plz: '6850', city: 'Dornbirn' },
+    { street: 'Marktgasse', plz: '6800', city: 'Feldkirch' },
+    { street: 'Hauptstraße', plz: '6830', city: 'Rankweil' },
+    // Kärnten
+    { street: 'Alter Platz', plz: '9020', city: 'Klagenfurt am Wörthersee' },
+    { street: 'Hauptplatz', plz: '9500', city: 'Villach' },
+    { street: 'Hauptstraße', plz: '9400', city: 'Wolfsberg' },
+    { street: 'Bahnhofstraße', plz: '9300', city: 'St. Veit an der Glan' },
+    // Burgenland
+    { street: 'Esterházystraße', plz: '7000', city: 'Eisenstadt' },
+    { street: 'Hauptstraße', plz: '7400', city: 'Oberwart' },
+    { street: 'Hauptplatz', plz: '7350', city: 'Oberpullendorf' },
+    { street: 'Hauptstraße', plz: '7100', city: 'Neusiedl am See' },
 ];
 
 function pick(arr) {
