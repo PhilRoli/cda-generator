@@ -17,6 +17,7 @@
             <a class="header-email-btn" href="mailto:philipp@rolinek.at?subject=CDA-%C3%9Cbungsdokument-Ersteller%20Kontakt"
                 >📧 E-Mail</a
             >
+            <span id="version-badge" class="header-version-badge"></span>
         </header>
 
         <div class="banner-uebung">
@@ -321,5 +322,32 @@
         <input type="file" id="file-load" accept="application/json" style="display: none" />
 
         <script type="module" src="js/app.js"></script>
+
+        <dialog id="changelog-dialog" class="changelog-dialog">
+            <h2>Changelog</h2>
+            <div class="changelog-entry">
+                <h3>v1.1.0 — April 2026</h3>
+                <ul>
+                    <li>Versionsanzeige und Changelog</li>
+                    <li>Adressdaten für alle österreichischen Bundesländer</li>
+                    <li>Ambulant / Stationär Besuchstyp (wirkt auf CDA-XML)</li>
+                    <li>Alle Cloud-Szenarien öffentlich einsehbar (mit Benutzernamen)</li>
+                    <li>Bundesland-angepasste Krankenhausliste mit Auto-Fill</li>
+                </ul>
+            </div>
+            <div class="changelog-entry">
+                <h3>v1.0.0 — März 2026</h3>
+                <ul>
+                    <li>Formulargestützter CDA Entlassungsbrief-Ersteller</li>
+                    <li>PDF- und XML-Generierung mit ELGA-Stylesheet und Wasserzeichen</li>
+                    <li>Lokale Szenario-Verwaltung (JSON-Datei)</li>
+                    <li>Cloud-Szenario-Verwaltung (eigene Szenarien)</li>
+                    <li>Zufällige Patientenstammdaten (Faker für Österreich)</li>
+                    <li>Quick-Add für Diagnosen, Medikation, Allergien, Risikofaktoren</li>
+                    <li>Patientenverfügungs-Status mit bedingten Feldern</li>
+                </ul>
+            </div>
+            <button class="btn" id="changelog-close">Schließen</button>
+        </dialog>
     </body>
 </html>

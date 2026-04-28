@@ -4,6 +4,8 @@ import { generateRandomPatient, generateRandomDoctor } from './faker.js';
 import { buildEntlassungsbrief } from './doctype-entlassung.js';
 import { LOGO_DATA_URI } from './logo-base64.js';
 
+const APP_VERSION = '1.1.0';
+
 const STORAGE_KEY = 'cda-uebung:last';
 const CLOUD_USER_KEY = 'cda-uebung:cloud-username';
 const SCENARIO_SOURCE_KEY = 'cda-uebung:scenario-source';
@@ -715,6 +717,12 @@ function init() {
     setupButtons();
     setupScenarioManager();
     setupPvVisibility();
+    const badge = document.getElementById('version-badge');
+    badge.textContent = `v${APP_VERSION}`;
+    badge.addEventListener('click', () => document.getElementById('changelog-dialog').showModal());
+    document.getElementById('changelog-close').addEventListener('click', () =>
+        document.getElementById('changelog-dialog').close()
+    );
 }
 
 init();
