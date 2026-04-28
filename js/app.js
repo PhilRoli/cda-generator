@@ -415,10 +415,39 @@ function getCloudUsername() {
     return input?.value?.trim() || '';
 }
 
+function isShowAll() {
+    return document.getElementById('cloud-show-all')?.checked ?? false;
+}
+
+async function refreshCloudScenarios(options = {}) {
+    const { silent = false } = options;
+
+    if (isShowAll()) {
+        const list = await apiJson('/api/scenarios/all');
+        cloudScenarios = list;
+        renderCloudScenarioSelect();
+        if (!silent) setStatus(`Cloud-Liste aktualisiert: ${cloudScenarios.length} Szenario(s) von allen Benutzern.`);
+        return;
+    }
+
+    const username = getCloudUsername();
+    if (!username) {
+        cloudScenarios = [];
+        renderCloudScenarioSelect();
+        if (!silent) setStatus('Bitte zuerst einen Benutzernamen für Cloud-Szenarien eingeben.');
+        return;
+    }
+    const list = await apiJson(`/api/scenarios?username=${encodeURIComponent(username)}`);
+    cloudScenarios = list;
+    renderCloudScenarioSelect();
+    if (!silent) setStatus(`Cloud-Liste aktualisiert: ${cloudScenarios.length} Szenario(s).`);
+}
+
 function renderCloudScenarioSelect() {
     const select = document.getElementById('cloud-scenario-select');
     if (!select) return;
     const keepId = selectedCloudScenarioId;
+    const showAll = isShowAll();
     select.innerHTML = '';
 
     if (!cloudScenarios.length) {
@@ -433,28 +462,14 @@ function renderCloudScenarioSelect() {
     cloudScenarios.forEach((scenario) => {
         const option = document.createElement('option');
         option.value = scenario.id;
-        option.textContent = `${scenario.title} · ${scenario.updatedAt}`;
+        const prefix = showAll ? `[${scenario.username}] ` : '';
+        option.textContent = `${prefix}${scenario.title} · ${scenario.updatedAt}`;
         if (keepId && keepId === scenario.id) option.selected = true;
         select.appendChild(option);
     });
 
     selectedCloudScenarioId = select.value || cloudScenarios[0].id;
     if (selectedCloudScenarioId) select.value = selectedCloudScenarioId;
-}
-
-async function refreshCloudScenarios(options = {}) {
-    const { silent = false } = options;
-    const username = getCloudUsername();
-    if (!username) {
-        cloudScenarios = [];
-        renderCloudScenarioSelect();
-        if (!silent) setStatus('Bitte zuerst einen Benutzernamen für Cloud-Szenarien eingeben.');
-        return;
-    }
-    const list = await apiJson(`/api/scenarios?username=${encodeURIComponent(username)}`);
-    cloudScenarios = list;
-    renderCloudScenarioSelect();
-    if (!silent) setStatus(`Cloud-Liste aktualisiert: ${cloudScenarios.length} Szenario(s).`);
 }
 
 async function saveCloudScenario() {
@@ -487,19 +502,24 @@ async function saveCloudScenario() {
 }
 
 async function loadCloudScenario() {
-    const username = getCloudUsername();
-    if (!username) {
-        setStatus('Bitte zuerst einen Benutzernamen eingeben.');
-        return;
-    }
     if (!selectedCloudScenarioId) {
         setStatus('Bitte zuerst ein Cloud-Szenario auswählen.');
         return;
     }
 
-    const detail = await apiJson(
-        `/api/scenarios/${encodeURIComponent(selectedCloudScenarioId)}?username=${encodeURIComponent(username)}`,
-    );
+    let url;
+    if (isShowAll()) {
+        url = `/api/scenarios/${encodeURIComponent(selectedCloudScenarioId)}`;
+    } else {
+        const username = getCloudUsername();
+        if (!username) {
+            setStatus('Bitte zuerst einen Benutzernamen eingeben.');
+            return;
+        }
+        url = `/api/scenarios/${encodeURIComponent(selectedCloudScenarioId)}?username=${encodeURIComponent(username)}`;
+    }
+
+    const detail = await apiJson(url);
     state = Object.assign(defaultState(), detail.state || {});
     saveState();
     rebindAll();
@@ -564,6 +584,13 @@ function setupScenarioManager() {
     usernameInput.addEventListener('input', () => localStorage.setItem(CLOUD_USER_KEY, usernameInput.value.trim()));
     select.addEventListener('change', () => {
         selectedCloudScenarioId = select.value || null;
+    });
+    document.getElementById('cloud-show-all').addEventListener('change', async () => {
+        try {
+            await refreshCloudScenarios({ silent: false });
+        } catch (err) {
+            setStatus(`Cloud-Refresh fehlgeschlagen: ${err.message}`);
+        }
     });
     localSaveBtn.addEventListener('click', saveLocalScenario);
     localLoadBtn.addEventListener('click', () => fileInput.click());
