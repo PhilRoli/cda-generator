@@ -58,6 +58,7 @@ function defaultState() {
             dischargeDate: isoLocal(discharge),
             ward: 'Unfallchirurgie, Station 3B',
             caseId: '',
+            type: 'IMP',
         },
         brieftext: { text: '' },
         aufnahmegrund:
