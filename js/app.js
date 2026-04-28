@@ -718,11 +718,12 @@ function init() {
     setupScenarioManager();
     setupPvVisibility();
     const badge = document.getElementById('version-badge');
-    badge.textContent = `v${APP_VERSION}`;
-    badge.addEventListener('click', () => document.getElementById('changelog-dialog').showModal());
-    document.getElementById('changelog-close').addEventListener('click', () =>
-        document.getElementById('changelog-dialog').close()
-    );
+    const changelogDialog = document.getElementById('changelog-dialog');
+    if (badge && changelogDialog) {
+        badge.textContent = `v${APP_VERSION}`;
+        badge.addEventListener('click', () => changelogDialog.showModal());
+        document.getElementById('changelog-close')?.addEventListener('click', () => changelogDialog.close());
+    }
 }
 
 init();
