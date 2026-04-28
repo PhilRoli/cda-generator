@@ -642,7 +642,8 @@ function setupScenarioManager() {
 
 function setupButtons() {
     document.getElementById('btn-faker').addEventListener('click', () => {
-        state.patient = generateRandomPatient();
+        const bl = document.getElementById('global-bundesland')?.value || null;
+        state.patient = generateRandomPatient(bl);
         saveState();
         rebindAll();
         setStatus(
@@ -737,7 +738,7 @@ function setupPvVisibility() {
 }
 
 function setupHospitalSelector() {
-    const blSelect = document.getElementById('org-bundesland');
+    const blSelect = document.getElementById('global-bundesland');
     const hospSelect = document.getElementById('org-hospital-select');
     if (!blSelect || !hospSelect) return;
 
