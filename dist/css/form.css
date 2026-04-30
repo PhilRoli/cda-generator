@@ -293,15 +293,24 @@ footer.actions .status {
     margin-bottom: 12px;
 }
 
-.scenario-panel .scenario-row {
+.scenario-row {
     display: flex;
     gap: 8px;
     margin-top: 10px;
     align-items: center;
 }
 
-.scenario-panel #cloud-scenario-select {
+#cloud-scenario-select {
     flex: 1;
+}
+
+.xml-upload-filename {
+    color: var(--muted);
+    font-size: 13px;
+    font-style: italic;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .header-version-badge {
@@ -322,6 +331,46 @@ footer.actions .status {
 
 .header-version-badge:hover {
     background: #f0f0f3;
+}
+
+dialog.panel-dialog {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 560px;
+    width: 90%;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+dialog.panel-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.panel-dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.panel-dialog-header h2 {
+    margin: 0;
+}
+
+.dialog-close-btn {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    color: var(--muted);
+    padding: 4px 8px;
+    border-radius: 4px;
+    line-height: 1;
+}
+
+.dialog-close-btn:hover {
+    background: var(--bg);
+    color: var(--text);
 }
 
 dialog.changelog-dialog {

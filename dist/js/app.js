@@ -5,7 +5,7 @@ import { buildEntlassungsbrief } from './doctype-entlassung.js';
 import { LOGO_DATA_URI } from './logo-base64.js';
 import { HOSPITALS_BY_BUNDESLAND } from './hospitals.js';
 
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 
 const STORAGE_KEY = 'cda-uebung:last';
 const CLOUD_USER_KEY = 'cda-uebung:cloud-username';
@@ -658,6 +658,8 @@ function setupButtons() {
         setStatus(`Arzt generiert: ${state.author.title} ${state.author.givenName} ${state.author.familyName}`);
     });
 
+    setupXmlUpload();
+
     document.getElementById('btn-reset').addEventListener('click', () => {
         if (!confirm('Formular auf Default-Werte zurücksetzen? (Aktuelle Eingaben gehen verloren)')) return;
         state = defaultState();
@@ -792,6 +794,59 @@ function init() {
         badge.addEventListener('click', () => changelogDialog.showModal());
         document.getElementById('changelog-close')?.addEventListener('click', () => changelogDialog.close());
     }
+
+    setupPanelDialog('scenario-dialog', 'btn-open-scenarios', 'scenario-dialog-close');
+    setupPanelDialog('xml-upload-dialog', 'btn-open-xml-upload', 'xml-upload-dialog-close');
+}
+
+function setupPanelDialog(dialogId, openBtnId, closeBtnId) {
+    const dialog = document.getElementById(dialogId);
+    if (!dialog) return;
+    document.getElementById(openBtnId)?.addEventListener('click', () => dialog.showModal());
+    document.getElementById(closeBtnId)?.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
+}
+
+function setupXmlUpload() {
+    const fileInput = document.getElementById('xml-upload-input');
+    const btnChoose = document.getElementById('btn-xml-upload');
+    const btnConvert = document.getElementById('btn-xml-convert');
+    const filenameDisplay = document.getElementById('xml-upload-filename');
+
+    btnChoose.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', () => {
+        const file = fileInput.files[0];
+        if (file) {
+            filenameDisplay.textContent = file.name;
+            btnConvert.disabled = false;
+        } else {
+            filenameDisplay.textContent = 'Keine Datei ausgewählt';
+            btnConvert.disabled = true;
+        }
+    });
+
+    btnConvert.addEventListener('click', async () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        setStatus('PDF wird generiert…');
+        btnConvert.disabled = true;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const pdfBlob = await apiPdf('/api/pdf/upload', { method: 'POST', body: formData });
+            const pdfFilename = file.name.replace(/\.xml$/i, '.pdf');
+            downloadBlob(pdfFilename, pdfBlob);
+            setStatus(`PDF generiert: ${pdfFilename}`);
+        } catch (err) {
+            setStatus(`PDF-Generierung fehlgeschlagen: ${err.message}`);
+        } finally {
+            btnConvert.disabled = false;
+        }
+    });
 }
 
 init();
