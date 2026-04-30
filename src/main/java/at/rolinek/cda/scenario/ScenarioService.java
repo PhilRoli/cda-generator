@@ -123,7 +123,7 @@ public class ScenarioService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin-Funktion ist nicht konfiguriert.");
         }
         String provided = extractBearerToken(bearerToken);
-        if (provided == null || !adminToken.equals(provided)) {
+        if (!adminToken.equals(provided)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Ungültiger Admin-Token.");
         }
     }

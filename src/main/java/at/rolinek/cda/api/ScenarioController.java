@@ -43,7 +43,7 @@ public class ScenarioController {
 
     @GetMapping("/scenarios/{id}")
     public ScenarioDetailResponse get(
-        @PathVariable("id") String id,
+            @PathVariable String id,
         @RequestParam(value = "username", required = false) String username
     ) {
         ScenarioRecord record = (username != null && !username.isBlank())
@@ -71,7 +71,7 @@ public class ScenarioController {
 
     @DeleteMapping("/admin/scenarios/{id}")
     public void deleteAsAdmin(
-        @PathVariable("id") String id,
+            @PathVariable String id,
         @RequestHeader(name = "Authorization", required = false) String authorization
     ) {
         scenarioService.adminDelete(id, authorization);

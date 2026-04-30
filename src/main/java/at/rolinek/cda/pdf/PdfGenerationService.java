@@ -34,7 +34,7 @@ public class PdfGenerationService {
         "CDA2PDF-DEPS.jar"
     };
     private static final String WRAPPER_CLASS = "CDA2PDFUebung";
-    private static final String STYLESHEET_FILENAME = "elga-stylesheet-uebung.xsl";
+    private static final String STYLESHEET_FILENAME = "ELGA_Stylesheet_v1.0.xsl";
 
     private final Path elgaLibDir;
     private final Path elgaWrapperDir;
@@ -81,7 +81,7 @@ public class PdfGenerationService {
                 classpath,
                 WRAPPER_CLASS,
                 inputXml.toString(),
-                tempDir.toString() + File.separator,
+                tempDir + File.separator,
                 outputPdf.getFileName().toString()
             );
             processBuilder.directory(elgaWrapperDir.toFile());
@@ -198,11 +198,11 @@ public class PdfGenerationService {
                 try {
                     Files.deleteIfExists(p);
                 } catch (IOException ignored) {
-                    // temp cleanup best-effort
+                    // temp clean-up best-effort
                 }
             });
         } catch (IOException ignored) {
-            // temp cleanup best-effort
+            // temp clean-up best-effort
         }
     }
 }

@@ -7,8 +7,8 @@ public class AppProperties {
     private String dbPath = "data/cda-uebung.db";
     private String elgaLibDir = "elga-lib";
     private String elgaWrapperDir = "scripts/cda2pdf-uebung";
-    private String elgaStylesheetPath = "assets/elga-stylesheet-uebung.xsl";
-    private String watermarkText = "UEBUNGSZWECKE - NUR FUER TRAININGS!";
+    private String elgaStylesheetPath = "assets/ELGA_Stylesheet_v1.0.xsl";
+    private String watermarkText = "ÜBUNGSDOKUMENT!";
     private float watermarkOpacity = 0.17f;
     private String adminToken = "";
 
