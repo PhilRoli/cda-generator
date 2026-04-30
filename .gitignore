@@ -7,3 +7,4 @@ data/
 elga-lib/
 .env
 *.db
+.idea/
