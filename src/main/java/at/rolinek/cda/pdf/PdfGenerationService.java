@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.awt.*;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -34,6 +35,7 @@ public class PdfGenerationService {
         "CDA2PDF-DEPS.jar"
     };
     private static final String WRAPPER_CLASS = "CDA2PDFUebung";
+    private static final String CLEAN_WRAPPER_CLASS = "CDA2PDFClean";
     private static final String STYLESHEET_FILENAME = "ELGA_Stylesheet_v1.0.xsl";
 
     private final Path elgaLibDir;
@@ -52,7 +54,7 @@ public class PdfGenerationService {
 
     public byte[] generatePdf(String xmlContent) {
         try {
-            byte[] pdf = convertWithElgaWrapper(xmlContent);
+            byte[] pdf = convertWithElgaWrapper(xmlContent, WRAPPER_CLASS);
             return applyWatermark(pdf);
         } catch (ResponseStatusException ex) {
             throw ex;
@@ -62,7 +64,22 @@ public class PdfGenerationService {
         }
     }
 
-    private byte[] convertWithElgaWrapper(String xmlContent) throws Exception {
+    public byte[] generatePdfClean(String xmlContent) {
+        if (!Files.exists(elgaWrapperDir.resolve(CLEAN_WRAPPER_CLASS + ".class"))) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                "Sauberer PDF-Konverter ist noch nicht bereit (Kompilierung ausstehend). Bitte kurz warten.");
+        }
+        try {
+            return convertWithElgaWrapper(xmlContent, CLEAN_WRAPPER_CLASS);
+        } catch (ResponseStatusException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            LOG.error("Clean PDF generation failed", ex);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PDF-Erstellung fehlgeschlagen: " + ex.getMessage());
+        }
+    }
+
+    private byte[] convertWithElgaWrapper(String xmlContent, String wrapperClass) throws Exception {
         ensureConverterFiles();
 
         Path tempDir = Files.createTempDirectory("cda2pdf-");
@@ -79,7 +96,7 @@ public class PdfGenerationService {
                 "java",
                 "-cp",
                 classpath,
-                WRAPPER_CLASS,
+                wrapperClass,
                 inputXml.toString(),
                 tempDir + File.separator,
                 outputPdf.getFileName().toString()
@@ -168,6 +185,7 @@ public class PdfGenerationService {
                 float centerY = pageRect.getLowerLeftY() + pageRect.getHeight() / 2f;
                 float fontSize = Math.max(40f, Math.min(pageRect.getWidth(), pageRect.getHeight()) / 8f);
                 float textWidth = (PDType1Font.HELVETICA_BOLD.getStringWidth(watermarkText) / 1000f) * fontSize;
+                Color color = new Color(150, 150, 150);
 
                 try (PDPageContentStream contentStream =
                          new PDPageContentStream(document, page, PDPageContentStream.AppendMode.APPEND, true, true)) {
@@ -175,7 +193,7 @@ public class PdfGenerationService {
                     graphicsState.setNonStrokingAlphaConstant(watermarkOpacity);
                     graphicsState.setStrokingAlphaConstant(watermarkOpacity);
                     contentStream.setGraphicsStateParameters(graphicsState);
-                    contentStream.setNonStrokingColor(150, 150, 150);
+                    contentStream.setNonStrokingColor(color);
                     contentStream.beginText();
                     contentStream.setFont(PDType1Font.HELVETICA_BOLD, fontSize);
                     contentStream.setTextMatrix(Matrix.getRotateInstance(Math.toRadians(45), centerX, centerY));
