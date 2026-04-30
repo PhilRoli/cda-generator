@@ -5,7 +5,7 @@ import { buildEntlassungsbrief } from './doctype-entlassung.js';
 import { LOGO_DATA_URI } from './logo-base64.js';
 import { HOSPITALS_BY_BUNDESLAND } from './hospitals.js';
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 
 const STORAGE_KEY = 'cda-uebung:last';
 const CLOUD_USER_KEY = 'cda-uebung:cloud-username';

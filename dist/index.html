@@ -370,6 +370,19 @@
         <dialog id="changelog-dialog" class="changelog-dialog">
             <h2>Changelog</h2>
             <div class="changelog-entry">
+                <h3>v1.2.0 — April 2026</h3>
+                <ul>
+                    <li>ELGA-Schematron-Konformität: korrekte templateIds für alle Sektionen (Diagnosen, Anamnese, Allergien, Patientenverfügung, …)</li>
+                    <li>Header ergänzt: Pflicht-templateId <code>1.2.40.0.34.11.2.0.1</code>, <code>participant</code> (Fachlicher Ansprechpartner) und <code>documentationOf</code> (GDLSTATAUF)</li>
+                    <li>Neue Sektionen „Letzte Medikation" (Code 10160-0) und „Termine, Kontrollen, Wiederbestellung" (Code TERMIN)</li>
+                    <li>Sektion „Medikation bei Entlassung" umbenannt in „Empfohlene Medikation" (10183-2)</li>
+                    <li>Sektion „Aufenthaltsverlauf" umbenannt in „Durchgeführte Maßnahmen" (29554-3)</li>
+                    <li>Allergien und Risikofaktoren in eine Sektion zusammengeführt (templateId .2.2.13)</li>
+                    <li><code>healthCareFacility</code> bereinigt (nur <code>serviceProviderOrganization</code>)</li>
+                    <li>Sektions-Reihenfolge an ELGA-Validator-Erwartung angepasst</li>
+                </ul>
+            </div>
+            <div class="changelog-entry">
                 <h3>v1.1.0 — April 2026</h3>
                 <ul>
                     <li>Versionsanzeige und Changelog</li>
