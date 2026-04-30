@@ -4,7 +4,7 @@
 import { LOGO_BASE64, LOGO_MIME } from './logo-base64.js';
 
 const HL7_NS = 'urn:hl7-org:v3';
-const STYLESHEET_HREF = 'elga-stylesheet-uebung.xsl';
+const STYLESHEET_HREF = 'ELGA_Stylesheet_v1.0.xsl';
 
 export function escapeXml(str) {
     if (str === null || str === undefined) return '';
@@ -137,9 +137,10 @@ function renderEncompassingEncounter(encounter, organization) {
     const low = encounter.admissionDate ? `<low value="${toHl7Time(encounter.admissionDate)}"/>` : '';
     const high = encounter.dischargeDate ? `<high value="${toHl7Time(encounter.dischargeDate)}"/>` : '';
     const type = encounter.type || 'IMP';
-    const encounterCode = type === 'AMB'
-        ? `<code code="AMB" codeSystem="2.16.840.1.113883.5.4" codeSystemName="HL7:ActCode" displayName="ambulatory"/>`
-        : `<code code="IMP" codeSystem="2.16.840.1.113883.5.4" codeSystemName="HL7:ActCode" displayName="inpatient encounter"/>`;
+    const encounterCode =
+        type === 'AMB'
+            ? `<code code="AMB" codeSystem="2.16.840.1.113883.5.4" codeSystemName="HL7:ActCode" displayName="ambulatory"/>`
+            : `<code code="IMP" codeSystem="2.16.840.1.113883.5.4" codeSystemName="HL7:ActCode" displayName="inpatient encounter"/>`;
     return `<componentOf>
 <encompassingEncounter>
 <id root="1.2.40.0.34.99.111.1.5" extension="${escapeXml(encounter.caseId || uuid())}"/>
@@ -193,9 +194,7 @@ function defaultBrieftext(state) {
     const adm = formatGermanDateTime(state.encounter?.admissionDate);
     const dis = formatGermanDateTime(state.encounter?.dischargeDate);
     const stayPart = adm && dis ? `vom ${adm} bis ${dis}` : adm ? `seit ${adm}` : dis ? `bis ${dis}` : '';
-    const treatment = (state.encounter?.type || 'IMP') === 'AMB'
-        ? 'ambulanter Behandlung'
-        : 'stationärer Behandlung';
+    const treatment = (state.encounter?.type || 'IMP') === 'AMB' ? 'ambulanter Behandlung' : 'stationärer Behandlung';
     return `Sehr geehrte Frau Kollegin, sehr geehrter Herr Kollege,\n\nwir berichten Ihnen über ${accusative}, ${relative} ${stayPart} in unserer ${treatment} befand.`;
 }
 
