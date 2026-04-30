@@ -141,6 +141,8 @@ function renderEncompassingEncounter(encounter, organization) {
         type === 'AMB'
             ? `<code code="AMB" codeSystem="2.16.840.1.113883.5.4" codeSystemName="HL7:ActCode" displayName="ambulatory"/>`
             : `<code code="IMP" codeSystem="2.16.840.1.113883.5.4" codeSystemName="HL7:ActCode" displayName="inpatient encounter"/>`;
+    const orgName = encounter.ward ? `${organization.name} – ${encounter.ward}` : organization.name;
+    const orgForFacility = { ...organization, name: orgName };
     return `<componentOf>
 <encompassingEncounter>
 <id root="1.2.40.0.34.99.111.1.5" extension="${escapeXml(encounter.caseId || uuid())}"/>
@@ -151,18 +153,54 @@ ${high}
 </effectiveTime>
 <location>
 <healthCareFacility>
-<id root="1.2.40.0.34.99.111.1.6"/>
-<code code="HOSP" codeSystem="2.16.840.1.113883.5.111" codeSystemName="HL7:RoleCode" displayName="Hospital"/>
-<location>
-<name>${escapeXml(encounter.ward || organization.name)}</name>
-</location>
 <serviceProviderOrganization>
-${renderOrganizationBlock(organization)}
+${renderOrganizationBlock(orgForFacility)}
 </serviceProviderOrganization>
 </healthCareFacility>
 </location>
 </encompassingEncounter>
 </componentOf>`;
+}
+
+function renderParticipantAnsprechpartner(person, organization) {
+    if (!person) return '';
+    return `<participant typeCode="CALLBCK">
+<templateId root="1.2.40.0.34.11.1.1.1"/>
+<associatedEntity classCode="PROV">
+${renderAddress(organization.address)}
+<telecom value="tel:${escapeXml(organization.phone || '')}"/>
+<associatedPerson>
+${renderPersonBlock(person)}
+</associatedPerson>
+<scopingOrganization>
+<name>${escapeXml(organization.name)}</name>
+<telecom value="tel:${escapeXml(organization.phone || '')}"/>
+${renderAddress(organization.address)}
+</scopingOrganization>
+</associatedEntity>
+</participant>`;
+}
+
+function renderDocumentationOf(encounter) {
+    if (!encounter || (!encounter.admissionDate && !encounter.dischargeDate)) {
+        return `<documentationOf>
+<serviceEvent classCode="ACT" moodCode="EVN">
+<code code="GDLSTATAUF" codeSystem="1.2.40.0.34.5.21" codeSystemName="ELGA_Gesundheitsdienstleistung" displayName="Stationärer Aufenthalt"/>
+<effectiveTime nullFlavor="UNK"/>
+</serviceEvent>
+</documentationOf>`;
+    }
+    const low = encounter.admissionDate ? `<low value="${toHl7Time(encounter.admissionDate)}"/>` : '<low nullFlavor="UNK"/>';
+    const high = encounter.dischargeDate ? `<high value="${toHl7Time(encounter.dischargeDate)}"/>` : '<high nullFlavor="UNK"/>';
+    return `<documentationOf>
+<serviceEvent classCode="ACT" moodCode="EVN">
+<code code="GDLSTATAUF" codeSystem="1.2.40.0.34.5.21" codeSystemName="ELGA_Gesundheitsdienstleistung" displayName="Stationärer Aufenthalt"/>
+<effectiveTime>
+${low}
+${high}
+</effectiveTime>
+</serviceEvent>
+</documentationOf>`;
 }
 
 function formatGermanDateTime(value) {
@@ -227,6 +265,7 @@ ${paragraphs}
 // Master assembly. `sections` ist ein Array von rohen <component>-Strings (incl. Brieftext).
 export function composeDocument({ documentMeta, patient, author, organization, encounter, sections, legalAuthTime }) {
     const time = documentMeta.effectiveTime || new Date().toISOString();
+    const ansprechpartner = documentMeta.ansprechpartner || author;
     return `<?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet type="text/xsl" href="${STYLESHEET_HREF}"?>
 <ClinicalDocument xmlns="${HL7_NS}" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -234,6 +273,7 @@ export function composeDocument({ documentMeta, patient, author, organization, e
 <typeId extension="POCD_HD000040" root="2.16.840.1.113883.1.3"/>
 <templateId assigningAuthorityName="ELGA" root="1.2.40.0.34.11.1"/>
 <templateId assigningAuthorityName="ELGA" root="1.2.40.0.34.11.2"/>
+<templateId assigningAuthorityName="ELGA" root="1.2.40.0.34.11.2.0.1"/>
 <id extension="${uuid()}" root="1.2.40.0.34.99.111.1.1"/>
 <code code="${escapeXml(documentMeta.code || '11490-0')}" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="${escapeXml(documentMeta.codeDisplayName || 'Discharge summarization Note')}"/>
 <title>${escapeXml(documentMeta.title || 'Entlassungsbrief')}</title>
@@ -246,6 +286,8 @@ ${renderRecordTarget(patient)}
 ${renderAuthor(author, organization, time)}
 ${renderCustodian(organization)}
 ${renderLegalAuthenticator(author, organization, legalAuthTime || time)}
+${renderParticipantAnsprechpartner(ansprechpartner, organization)}
+${renderDocumentationOf(encounter)}
 ${renderEncompassingEncounter(encounter, organization)}
 <component>
 <structuredBody>

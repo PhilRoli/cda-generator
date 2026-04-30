@@ -57,7 +57,7 @@ function sectionAnamnese(state) {
     const textPart = state.anamnese ? paragraphsFromText(state.anamnese) : '';
     const narrative = [listPart, textPart].filter(Boolean).join('\n') || '<paragraph/>';
     return renderSection({
-        templateId: '1.2.40.0.34.11.2.2.2',
+        templateId: '1.2.40.0.34.11.2.2.18',
         code: '11329-0',
         displayName: 'History of current illness',
         title: 'Anamnese / Vorerkrankungen',
@@ -72,7 +72,7 @@ function sectionDiagnosen(state) {
         ? `<list>\n${items.map((t) => `<item>${escapeHtml(t)}</item>`).join('\n')}\n</list>`
         : '<paragraph>Keine Diagnose dokumentiert.</paragraph>';
     return renderSection({
-        templateId: '1.2.40.0.34.11.2.2.7',
+        templateId: '1.2.40.0.34.11.2.2.2',
         code: '11535-2',
         displayName: 'Hospital discharge diagnosis',
         title: 'Diagnosen bei Entlassung',
@@ -80,17 +80,17 @@ function sectionDiagnosen(state) {
     });
 }
 
-function sectionVerlauf(state) {
+function sectionDurchgefuehrteMassnahmen(state) {
     return renderSection({
         templateId: '1.2.40.0.34.11.2.2.4',
-        code: '8648-8',
-        displayName: 'Hospital course',
-        title: 'Aufenthaltsverlauf',
+        code: '29554-3',
+        displayName: 'Procedures provided',
+        title: 'Durchgeführte Maßnahmen',
         narrative: paragraphsFromText(state.verlauf || ''),
     });
 }
 
-function sectionMedikation(state) {
+function sectionEmpfohleneMedikation(state) {
     const list = Array.isArray(state.medikation) ? state.medikation : [];
     const narrative = list.length
         ? tableFromRows({
@@ -98,42 +98,70 @@ function sectionMedikation(state) {
               rows: list.map((m) => [m.medikament, m.schema || '']),
               colWidths: ['', '25'],
           })
-        : '<paragraph>Keine Medikation bei Entlassung.</paragraph>';
+        : '<paragraph>Keine Medikation bei Entlassung empfohlen.</paragraph>';
     return renderSection({
-        templateId: '1.2.40.0.34.11.2.2.5',
+        templateId: '1.2.40.0.34.11.2.2.7',
         code: '10183-2',
         displayName: 'Hospital discharge medications',
-        title: 'Medikation bei Entlassung',
+        title: 'Empfohlene Medikation',
+        narrative,
+    });
+}
+
+function sectionLetzteMedikation(state) {
+    const list = Array.isArray(state.letzteMedikation) ? state.letzteMedikation : [];
+    const narrative = list.length
+        ? tableFromRows({
+              headers: ['Medikament', 'Schema (M-Mi-Ab-N)'],
+              rows: list.map((m) => [m.medikament, m.schema || '']),
+              colWidths: ['', '25'],
+          })
+        : '<paragraph>Keine Angaben zur letzten Medikation während des Aufenthalts.</paragraph>';
+    return renderSection({
+        templateId: '1.2.40.0.34.11.2.2.5',
+        code: '10160-0',
+        displayName: 'History of medication use',
+        title: 'Letzte Medikation',
+        narrative,
+    });
+}
+
+function sectionTermine(state) {
+    const list = Array.isArray(state.termine) ? state.termine : [];
+    const narrative = list.length
+        ? `<list>\n${list.map((t) => `<item>${escapeHtml(typeof t === 'string' ? t : t.text || '')}</item>`).join('\n')}\n</list>`
+        : state.termine && typeof state.termine === 'string'
+          ? paragraphsFromText(state.termine)
+          : '<paragraph>Keine Termine, Kontrollen oder Wiederbestellungen vereinbart.</paragraph>';
+    return renderSection({
+        templateId: '1.2.40.0.34.11.2.2.10',
+        code: 'TERMIN',
+        codeSystem: '1.2.40.0.34.5.40',
+        codeSystemName: 'ELGA_Sections',
+        displayName: 'Termine, Kontrollen, Wiederbestellung',
+        title: 'Termine, Kontrollen, Wiederbestellung',
         narrative,
     });
 }
 
 function sectionAllergien(state) {
-    const list = Array.isArray(state.allergien) ? state.allergien : [];
-    const items = list.map((a) => a.substanz).filter(Boolean);
-    const narrative = items.length
-        ? `<list>\n${items.map((t) => `<item>${escapeHtml(t)}</item>`).join('\n')}\n</list>`
+    const allergList = Array.isArray(state.allergien) ? state.allergien : [];
+    const allergItems = allergList.map((a) => a.substanz).filter(Boolean);
+    const risikoList = Array.isArray(state.risikofaktoren) ? state.risikofaktoren : [];
+    const risikoItems = risikoList.map((r) => r.faktor).filter(Boolean);
+
+    const allergPart = allergItems.length
+        ? `<paragraph styleCode="xELGA_h3">Allergien und Intoleranzen</paragraph>\n<list>\n${allergItems.map((t) => `<item>${escapeHtml(t)}</item>`).join('\n')}\n</list>`
         : '<paragraph>Keine bekannten Allergien oder Intoleranzen.</paragraph>';
+    const risikoPart = risikoItems.length
+        ? `<paragraph styleCode="xELGA_h3">Risikofaktoren</paragraph>\n<list>\n${risikoItems.map((t) => `<item>${escapeHtml(t)}</item>`).join('\n')}\n</list>`
+        : '';
+    const narrative = [allergPart, risikoPart].filter(Boolean).join('\n');
     return renderSection({
-        templateId: '1.2.40.0.34.11.2.2.10',
+        templateId: '1.2.40.0.34.11.2.2.13',
         code: '48765-2',
         displayName: 'Allergies and adverse reactions Document',
-        title: 'Allergien und Intoleranzen',
-        narrative,
-    });
-}
-
-function sectionRisikofaktoren(state) {
-    const list = Array.isArray(state.risikofaktoren) ? state.risikofaktoren : [];
-    const items = list.map((r) => r.faktor).filter(Boolean);
-    const narrative = items.length
-        ? `<list>\n${items.map((t) => `<item>${escapeHtml(t)}</item>`).join('\n')}\n</list>`
-        : '<paragraph>Keine relevanten Risikofaktoren dokumentiert.</paragraph>';
-    return renderSection({
-        templateId: '1.2.40.0.34.11.2.2.11',
-        code: '75310-3',
-        displayName: 'Health concerns Document',
-        title: 'Risikofaktoren',
+        title: 'Allergien, Unverträglichkeiten und Risiken',
         narrative,
     });
 }
@@ -166,7 +194,7 @@ function sectionPatientenverfuegung(state) {
     const textPart = pv.bemerkung ? paragraphsFromText(pv.bemerkung) : '';
     const narrative = [tablePart, textPart].filter(Boolean).join('\n');
     return renderSection({
-        templateId: '1.2.40.0.34.11.2.2.12',
+        templateId: '1.2.40.0.34.11.1.2.4',
         code: '42348-3',
         displayName: 'Advance directives',
         title: 'Patientenverfügungsstatus',
@@ -176,7 +204,7 @@ function sectionPatientenverfuegung(state) {
 
 function sectionEmpfehlungen(state) {
     return renderSection({
-        templateId: '1.2.40.0.34.11.2.2.6',
+        templateId: '1.2.40.0.34.11.2.2.9',
         code: '18776-5',
         displayName: 'Plan of treatment',
         title: 'Empfehlungen / Weiteres Procedere',
@@ -190,12 +218,13 @@ export function buildEntlassungsbrief(state) {
     const sections = [
         renderBrieftextSection(state),
         sectionAufnahmegrund(state),
+        sectionEmpfohleneMedikation(state),
+        sectionTermine(state),
         sectionDiagnosen(state),
         sectionAllergien(state),
         sectionAnamnese(state),
-        sectionRisikofaktoren(state),
-        sectionVerlauf(state),
-        sectionMedikation(state),
+        sectionDurchgefuehrteMassnahmen(state),
+        sectionLetzteMedikation(state),
         sectionEmpfehlungen(state),
         sectionPatientenverfuegung(state),
     ].filter(Boolean);
