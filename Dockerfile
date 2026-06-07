@@ -7,7 +7,10 @@ RUN mvn -q -DskipTests package
 FROM eclipse-temurin:21
 WORKDIR /app
 
-RUN groupadd --gid 1000 appuser && useradd --uid 1000 --gid 1000 --no-create-home --shell /usr/sbin/nologin appuser
+# System user/group with auto-assigned ids — the eclipse-temurin (Ubuntu 24.04)
+# base already occupies uid/gid 1000 with its default "ubuntu" user, so we must
+# not pin to 1000. chown below references the account by name.
+RUN groupadd --system appuser && useradd --system --gid appuser --no-create-home --shell /usr/sbin/nologin appuser
 
 COPY --from=build /app/target/cda-uebung-server.jar /app/app.jar
 COPY scripts/cda2pdf-uebung /app/scripts/cda2pdf-uebung

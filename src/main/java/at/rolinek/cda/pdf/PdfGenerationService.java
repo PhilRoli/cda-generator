@@ -341,6 +341,15 @@ public class PdfGenerationService {
             return pdfBytes;
         }
 
+        // Defense-in-depth: a watermark character the standard font cannot encode
+        // (e.g. a misconfigured/mojibake'd text) must never crash PDF generation.
+        // Replace any un-encodable character with '-' so a watermark is always drawn.
+        String safeText = toFontSafe(PDType1Font.HELVETICA_BOLD, watermarkText);
+        if (safeText.isBlank()) {
+            LOG.warn("Wasserzeichen-Text enthält keine darstellbaren Zeichen; Wasserzeichen wird übersprungen.");
+            return pdfBytes;
+        }
+
         try (PDDocument document = PDDocument.load(new ByteArrayInputStream(pdfBytes), MemoryUsageSetting.setupMixed(32 * 1024 * 1024));
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             for (PDPage page : document.getPages()) {
@@ -348,7 +357,7 @@ public class PdfGenerationService {
                 float centerX = pageRect.getLowerLeftX() + pageRect.getWidth() / 2f;
                 float centerY = pageRect.getLowerLeftY() + pageRect.getHeight() / 2f;
                 float fontSize = Math.max(40f, Math.min(pageRect.getWidth(), pageRect.getHeight()) / 8f);
-                float textWidth = (PDType1Font.HELVETICA_BOLD.getStringWidth(watermarkText) / 1000f) * fontSize;
+                float textWidth = (PDType1Font.HELVETICA_BOLD.getStringWidth(safeText) / 1000f) * fontSize;
                 Color color = new Color(150, 150, 150);
 
                 try (PDPageContentStream contentStream =
@@ -362,12 +371,32 @@ public class PdfGenerationService {
                     contentStream.setFont(PDType1Font.HELVETICA_BOLD, fontSize);
                     contentStream.setTextMatrix(Matrix.getRotateInstance(Math.toRadians(45), centerX, centerY));
                     contentStream.newLineAtOffset(-textWidth / 2f, 0f);
-                    contentStream.showText(watermarkText);
+                    contentStream.showText(safeText);
                     contentStream.endText();
                 }
             }
             document.save(out);
             return out.toByteArray();
         }
+    }
+
+    /**
+     * Returns a copy of {@code text} in which every character the given font cannot
+     * encode is replaced by '-', so width measurement and rendering never throw.
+     */
+    static String toFontSafe(PDType1Font font, String text) {
+        StringBuilder sb = new StringBuilder(text.length());
+        for (int i = 0; i < text.length(); ) {
+            int cp = text.codePointAt(i);
+            String ch = new String(Character.toChars(cp));
+            try {
+                font.getStringWidth(ch);
+                sb.append(ch);
+            } catch (Exception ex) {
+                sb.append('-');
+            }
+            i += Character.charCount(cp);
+        }
+        return sb.toString();
     }
 }
