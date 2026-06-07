@@ -43,10 +43,21 @@ public class BackupService {
         int retention = properties.getBackup().getRetention();
         try {
             Path written = writeBackup(dir);
-            pruneOldBackups(dir, retention);
-            LOG.info("Szenario-Backup erstellt: {} (Aufbewahrung: {})", written.getFileName(), retention);
+            int pruned = pruneOldBackups(dir, retention);
+            LOG.info("event=backup_completed file={} count={} pruned={}", written.getFileName(), countInBackup(written), pruned);
         } catch (Exception ex) {
             LOG.warn("Szenario-Backup fehlgeschlagen: {}", ex.getMessage(), ex);
+        }
+    }
+
+    private int countInBackup(Path file) {
+        try {
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> envelope = objectMapper.readValue(file.toFile(), java.util.Map.class);
+            Object count = envelope.get("count");
+            return count instanceof Integer i ? i : 0;
+        } catch (Exception ex) {
+            return 0;
         }
     }
 
@@ -68,13 +79,15 @@ public class BackupService {
 
     /**
      * Removes the oldest backup files from {@code dir} so that at most {@code retention} files remain.
+     *
+     * @return the number of files actually deleted
      */
-    public void pruneOldBackups(Path dir, int retention) throws IOException {
+    public int pruneOldBackups(Path dir, int retention) throws IOException {
         if (retention <= 0) {
-            return;
+            return 0;
         }
         if (!Files.isDirectory(dir)) {
-            return;
+            return 0;
         }
         try (Stream<Path> stream = Files.list(dir)) {
             List<Path> files = stream
@@ -82,10 +95,11 @@ public class BackupService {
                 .sorted(Comparator.comparing(p -> p.getFileName().toString()))
                 .toList();
 
-            int toDelete = files.size() - retention;
+            int toDelete = Math.max(0, files.size() - retention);
             for (int i = 0; i < toDelete; i++) {
                 Files.deleteIfExists(files.get(i));
             }
+            return toDelete;
         }
     }
 

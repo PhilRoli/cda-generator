@@ -3,7 +3,10 @@ package at.rolinek.cda.api;
 import at.rolinek.cda.scenario.ScenarioRecord;
 import at.rolinek.cda.scenario.ScenarioService;
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotBlank;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +24,9 @@ import java.util.List;
 @RequestMapping("/api")
 @Validated
 public class ScenarioController {
+
+    private static final Logger LOG = LoggerFactory.getLogger(ScenarioController.class);
+
     private final ScenarioService scenarioService;
 
     public ScenarioController(ScenarioService scenarioService) {
@@ -44,19 +50,24 @@ public class ScenarioController {
     @GetMapping("/scenarios/{id}")
     public ScenarioDetailResponse get(
             @PathVariable String id,
-        @RequestParam(value = "username", required = false) String username
+        @RequestParam(value = "username", required = false) String username,
+        HttpServletRequest httpRequest
     ) {
-        ScenarioRecord record = (username != null && !username.isBlank())
-            ? scenarioService.getByIdForUser(id, username)
-            : scenarioService.getByIdPublic(id);
+        boolean isPublic = (username == null || username.isBlank());
+        ScenarioRecord record = isPublic
+            ? scenarioService.getByIdPublic(id)
+            : scenarioService.getByIdForUser(id, username);
+        LOG.info("event=scenario_loaded ip={} id={} public={}", ClientIp.from(httpRequest), id, isPublic);
         return ScenarioDetailResponse.from(record, scenarioService.payloadToJson(record));
     }
 
     @PostMapping("/scenarios")
-    public ScenarioSummaryResponse save(@RequestBody ScenarioSaveBody body) {
+    public ScenarioSummaryResponse save(@RequestBody ScenarioSaveBody body, HttpServletRequest httpRequest) {
+        String action = (body.id() == null || body.id().isBlank()) ? "created" : "updated";
         ScenarioRecord saved = scenarioService.saveForUser(
             new ScenarioService.ScenarioSaveRequest(body.id(), body.username(), body.title(), body.state())
         );
+        LOG.info("event=scenario_saved ip={} user={} id={} title={} action={}", ClientIp.from(httpRequest), saved.username(), saved.id(), saved.title(), action);
         return ScenarioSummaryResponse.from(saved);
     }
 
@@ -72,24 +83,31 @@ public class ScenarioController {
     @DeleteMapping("/admin/scenarios/{id}")
     public void deleteAsAdmin(
             @PathVariable String id,
-        @RequestHeader(name = "Authorization", required = false) String authorization
+        @RequestHeader(name = "Authorization", required = false) String authorization,
+        HttpServletRequest httpRequest
     ) {
         scenarioService.adminDelete(id, authorization);
+        LOG.info("event=scenario_admin_deleted ip={} id={}", ClientIp.from(httpRequest), id);
     }
 
     @GetMapping("/admin/scenarios/export")
     public ScenarioService.ExportResult exportScenarios(
-        @RequestHeader(name = "Authorization", required = false) String authorization
+        @RequestHeader(name = "Authorization", required = false) String authorization,
+        HttpServletRequest httpRequest
     ) {
-        return scenarioService.exportAll(authorization);
+        ScenarioService.ExportResult result = scenarioService.exportAll(authorization);
+        LOG.info("event=scenarios_exported ip={} count={}", ClientIp.from(httpRequest), result.count());
+        return result;
     }
 
     @PostMapping("/admin/scenarios/import")
     public ImportSummaryResponse importScenarios(
         @RequestBody(required = false) ImportBody body,
-        @RequestHeader(name = "Authorization", required = false) String authorization
+        @RequestHeader(name = "Authorization", required = false) String authorization,
+        HttpServletRequest httpRequest
     ) {
         int imported = scenarioService.adminImport(body == null ? null : body.scenarios(), authorization);
+        LOG.info("event=scenarios_imported ip={} count={}", ClientIp.from(httpRequest), imported);
         return new ImportSummaryResponse(imported);
     }
 

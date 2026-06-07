@@ -2,6 +2,7 @@ package at.rolinek.cda.api;
 
 import at.rolinek.cda.config.AppProperties;
 import at.rolinek.cda.pdf.PdfGenerationService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotBlank;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +41,7 @@ public class PdfController {
     }
 
     @PostMapping(value = "/pdf", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_PDF_VALUE)
-    public ResponseEntity<byte[]> generatePdf(@RequestBody PdfRequest request) {
+    public ResponseEntity<byte[]> generatePdf(@RequestBody PdfRequest request, HttpServletRequest httpRequest) {
         if (request == null || request.xml() == null || request.xml().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "XML-Inhalt fehlt.");
         }
@@ -52,13 +53,15 @@ public class PdfController {
         headers.setContentType(MediaType.APPLICATION_PDF);
         headers.setContentLength(pdf.length);
         headers.setContentDisposition(ContentDisposition.attachment().filename(filename, StandardCharsets.UTF_8).build());
+        LOG.info("event=pdf_generated ip={} file={} bytes={}", ClientIp.from(httpRequest), filename, pdf.length);
         return ResponseEntity.ok().headers(headers).body(pdf);
     }
 
     @PostMapping(value = "/pdf/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> uploadXml(
             @RequestParam("file") MultipartFile file,
-            @RequestHeader(name = "X-Clean-Pdf-Password", required = false) String password) throws IOException {
+            @RequestHeader(name = "X-Clean-Pdf-Password", required = false) String password,
+            HttpServletRequest httpRequest) throws IOException {
 
         verifyCleanPdfPassword(password);
 
@@ -73,6 +76,7 @@ public class PdfController {
         headers.setContentType(MediaType.APPLICATION_PDF);
         headers.setContentLength(pdf.length);
         headers.setContentDisposition(ContentDisposition.attachment().filename(filename, StandardCharsets.UTF_8).build());
+        LOG.info("event=clean_pdf_generated ip={} file={} bytes={}", ClientIp.from(httpRequest), filename, pdf.length);
         return ResponseEntity.ok().headers(headers).body(pdf);
     }
 
