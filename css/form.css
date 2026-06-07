@@ -568,3 +568,158 @@ button.btn:disabled {
     opacity: 0.65;
     cursor: not-allowed;
 }
+
+/* ── Responsive breakpoints ──────────────────────────────────────────────── */
+
+/* Tablet: ≤ 768px ---------------------------------------------------------- */
+@media (max-width: 768px) {
+    /* Header: allow chips to wrap below title */
+    header.app-header {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 16px;
+    }
+
+    header.app-header .spacer {
+        /* On tablet the spacer still pushes chips right, but wrapping is allowed */
+        min-width: 0;
+    }
+
+    /* Main content: tighten horizontal padding */
+    main {
+        padding: 12px 16px 80px;
+    }
+
+    /* Grid: collapse 3-col → 2-col and 4-col → 2-col */
+    .grid-3 {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .grid-4 {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    /* Footer: allow buttons to wrap */
+    footer.actions {
+        flex-wrap: wrap;
+        padding: 10px 16px;
+    }
+
+    /* Dialogs: ensure they don't exceed viewport width */
+    dialog.panel-dialog,
+    dialog.changelog-dialog {
+        width: min(540px, 92vw);
+        max-width: 92vw;
+        padding: 20px;
+    }
+}
+
+/* Phone: ≤ 480px ----------------------------------------------------------- */
+@media (max-width: 480px) {
+    /* Header: allow everything to wrap, reduce logo size */
+    header.app-header {
+        padding: 8px 12px;
+        gap: 6px;
+    }
+
+    header.app-header img.logo {
+        height: 36px;
+    }
+
+    header.app-header h1 {
+        font-size: 15px;
+    }
+
+    /* The spacer collapses so chips wrap directly below the logo/title group */
+    header.app-header .spacer {
+        flex: 1 1 100%;
+        height: 0;
+    }
+
+    /* Main content */
+    main {
+        padding: 8px 12px 90px;
+    }
+
+    /* Collapse all multi-column grids to a single column */
+    .grid-2 {
+        grid-template-columns: 1fr;
+    }
+
+    .grid-3 {
+        grid-template-columns: 1fr;
+    }
+
+    .grid-4 {
+        grid-template-columns: 1fr;
+    }
+
+    /* grid-medi: keep label/value fields stacked but retain the remove button
+       Use 2-column layout: field area + 40px remove button so the button stays
+       reachable. The first two cells (name + dose) stack via grid-column spanning. */
+    .grid-medi {
+        grid-template-columns: 1fr 40px;
+    }
+
+    /* The first child (medication name field) spans full width */
+    .grid-medi > *:first-child {
+        grid-column: 1 / -1;
+    }
+
+    /* grid-single stays as-is (1fr 40px) — already phone-friendly */
+
+    /* Footer: stack status on its own line, buttons wrap */
+    footer.actions {
+        padding: 8px 12px;
+        gap: 6px;
+        justify-content: flex-start;
+    }
+
+    footer.actions .status {
+        flex: 1 1 100%;
+        margin-bottom: 4px;
+    }
+
+    /* Buttons: ensure minimum tap-target height */
+    button.btn {
+        min-height: 40px;
+        padding: 8px 12px;
+    }
+
+    button.btn.icon {
+        width: 40px;
+        height: 40px;
+        min-height: 40px;
+    }
+
+    /* Inputs: ensure comfortable tap target */
+    input[type='text'],
+    input[type='date'],
+    input[type='datetime-local'],
+    input[type='tel'],
+    select {
+        min-height: 40px;
+    }
+
+    /* Dialogs: near-full width, scrollable if tall */
+    dialog.panel-dialog,
+    dialog.changelog-dialog {
+        width: 92vw;
+        max-width: 92vw;
+        max-height: 90vh;
+        overflow-y: auto;
+        padding: 16px;
+    }
+
+    /* Toast container: near-full width with small margins */
+    #toast-container {
+        right: 8px;
+        left: 8px;
+        max-width: calc(100vw - 16px);
+    }
+
+    /* Section padding reduction */
+    section.form-section {
+        padding: 14px 12px;
+    }
+}
