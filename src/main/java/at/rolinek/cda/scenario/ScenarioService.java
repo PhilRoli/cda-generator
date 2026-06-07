@@ -118,6 +118,9 @@ public class ScenarioService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Keine Szenarien zum Importieren.");
         }
         for (ImportEntry entry : scenarios) {
+            if (entry == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ungültiger Szenario-Inhalt.");
+            }
             String payloadJson;
             try {
                 payloadJson = objectMapper.writeValueAsString(entry.state());

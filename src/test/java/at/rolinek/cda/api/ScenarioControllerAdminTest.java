@@ -116,22 +116,37 @@ class ScenarioControllerAdminTest {
 
     @Test
     void import_withNullScenariosField_returns400() throws Exception {
+        willThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Keine Szenarien zum Importieren."))
+            .given(scenarioService).adminImport(eq(null), eq("Bearer secret"));
+
         mvc.perform(post("/api/admin/scenarios/import")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"scenarios\": null}")
                 .header("Authorization", "Bearer secret"))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.message").value("Importdaten fehlen."));
+            .andExpect(status().isBadRequest());
     }
 
     @Test
     void import_withEmptyBody_returns400() throws Exception {
+        willThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Keine Szenarien zum Importieren."))
+            .given(scenarioService).adminImport(eq(null), eq("Bearer secret"));
+
         mvc.perform(post("/api/admin/scenarios/import")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}")
                 .header("Authorization", "Bearer secret"))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.message").value("Importdaten fehlen."));
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void import_withNoTokenAndNullBody_returns403BeforeValidation() throws Exception {
+        willThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Ungültiger Admin-Token."))
+            .given(scenarioService).adminImport(eq(null), eq(null));
+
+        mvc.perform(post("/api/admin/scenarios/import")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"scenarios\": null}"))
+            .andExpect(status().isForbidden());
     }
 
     @Test

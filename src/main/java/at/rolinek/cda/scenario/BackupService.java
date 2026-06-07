@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -80,13 +79,7 @@ public class BackupService {
         try (Stream<Path> stream = Files.list(dir)) {
             List<Path> files = stream
                 .filter(p -> p.getFileName().toString().startsWith("scenarios-") && p.getFileName().toString().endsWith(".json"))
-                .sorted(Comparator.comparingLong(p -> {
-                    try {
-                        return Files.readAttributes(p, BasicFileAttributes.class).creationTime().toMillis();
-                    } catch (IOException e) {
-                        return 0L;
-                    }
-                }))
+                .sorted(Comparator.comparing(p -> p.getFileName().toString()))
                 .toList();
 
             int toDelete = files.size() - retention;

@@ -4,7 +4,6 @@ import at.rolinek.cda.scenario.ScenarioRecord;
 import at.rolinek.cda.scenario.ScenarioService;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.validation.constraints.NotBlank;
-import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -91,10 +89,7 @@ public class ScenarioController {
         @RequestBody(required = false) ImportBody body,
         @RequestHeader(name = "Authorization", required = false) String authorization
     ) {
-        if (body == null || body.scenarios() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Importdaten fehlen.");
-        }
-        int imported = scenarioService.adminImport(body.scenarios(), authorization);
+        int imported = scenarioService.adminImport(body == null ? null : body.scenarios(), authorization);
         return new ImportSummaryResponse(imported);
     }
 
