@@ -1,6 +1,5 @@
 package at.rolinek.cda.pdf;
 
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,24 +18,24 @@ class WatermarkFontSafeTest {
     @Test
     void encodableUmlaut_isUnchanged() {
         String text = UE + "BUNGSDOKUMENT";
-        assertThat(PdfGenerationService.toFontSafe(PDType1Font.HELVETICA_BOLD, text)).isEqualTo(text);
+        assertThat(PdfGenerationService.toFontSafe(text)).isEqualTo(text);
     }
 
     @Test
     void unencodableControlChar_isReplacedWithDash_notThrown() {
         String text = CTRL + "BUNGSDOKUMENT";
-        assertThat(PdfGenerationService.toFontSafe(PDType1Font.HELVETICA_BOLD, text)).isEqualTo("-BUNGSDOKUMENT");
+        assertThat(PdfGenerationService.toFontSafe(text)).isEqualTo("-BUNGSDOKUMENT");
     }
 
     @Test
     void mixedText_replacesOnlyUnencodableChars() {
         String text = "A" + CTRL + "B" + CTRL + "C";
-        assertThat(PdfGenerationService.toFontSafe(PDType1Font.HELVETICA_BOLD, text)).isEqualTo("A-B-C");
+        assertThat(PdfGenerationService.toFontSafe(text)).isEqualTo("A-B-C");
     }
 
     @Test
     void plainAsciiText_isUnchanged() {
-        assertThat(PdfGenerationService.toFontSafe(PDType1Font.HELVETICA_BOLD, "UEBUNGSDOKUMENT"))
+        assertThat(PdfGenerationService.toFontSafe("UEBUNGSDOKUMENT"))
             .isEqualTo("UEBUNGSDOKUMENT");
     }
 }

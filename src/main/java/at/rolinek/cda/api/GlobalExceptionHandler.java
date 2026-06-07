@@ -1,5 +1,6 @@
 package at.rolinek.cda.api;
 
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,18 +29,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorBody> handleConstraintViolation(ConstraintViolationException ex) {
         String message = ex.getConstraintViolations().stream()
             .findFirst()
-            .map(v -> v.getMessage())
+            .map(ConstraintViolation::getMessage)
             .orElse("Ungültige Anfrageparameter.");
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorBody(message));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorBody> handleNotReadable(HttpMessageNotReadableException ex) {
+    public ResponseEntity<ErrorBody> handleNotReadable() {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorBody("Ungültiger Anfrageinhalt."));
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public ResponseEntity<ErrorBody> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
+    public ResponseEntity<ErrorBody> handleMaxUploadSize() {
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(new ErrorBody("Datei ist zu groß."));
     }
 

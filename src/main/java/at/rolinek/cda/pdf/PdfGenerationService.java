@@ -27,7 +27,6 @@ import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -197,7 +196,7 @@ public class PdfGenerationService {
         try {
             ElgaConverter converter = getElgaConverter();
             Future<byte[]> future =
-                conversionExecutor.submit((Callable<byte[]>) () -> converter.convert(xmlBytes, variant));
+                conversionExecutor.submit(() -> converter.convert(xmlBytes, variant));
             byte[] pdf = awaitConversion(future, variant);
             if (pdf == null || pdf.length == 0) {
                 LOG.error("ELGA-Konvertierung lieferte kein PDF (Variante {})", variant);
@@ -344,7 +343,7 @@ public class PdfGenerationService {
         // Defense-in-depth: a watermark character the standard font cannot encode
         // (e.g. a misconfigured/mojibake'd text) must never crash PDF generation.
         // Replace any un-encodable character with '-' so a watermark is always drawn.
-        String safeText = toFontSafe(PDType1Font.HELVETICA_BOLD, watermarkText);
+        String safeText = toFontSafe(watermarkText);
         if (safeText.isBlank()) {
             LOG.warn("Wasserzeichen-Text enthält keine darstellbaren Zeichen; Wasserzeichen wird übersprungen.");
             return pdfBytes;
@@ -384,13 +383,13 @@ public class PdfGenerationService {
      * Returns a copy of {@code text} in which every character the given font cannot
      * encode is replaced by '-', so width measurement and rendering never throw.
      */
-    static String toFontSafe(PDType1Font font, String text) {
+    static String toFontSafe(String text) {
         StringBuilder sb = new StringBuilder(text.length());
         for (int i = 0; i < text.length(); ) {
             int cp = text.codePointAt(i);
             String ch = new String(Character.toChars(cp));
             try {
-                font.getStringWidth(ch);
+                PDType1Font.HELVETICA_BOLD.getStringWidth(ch);
                 sb.append(ch);
             } catch (Exception ex) {
                 sb.append('-');
