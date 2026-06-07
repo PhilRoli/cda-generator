@@ -325,8 +325,21 @@ footer.actions .status {
     color: var(--muted);
     font-size: 12px;
     font-weight: 500;
+    font-family: inherit;
     cursor: pointer;
     user-select: none;
+}
+
+input.invalid {
+    border-color: #c8102e;
+    outline-color: #c8102e;
+}
+
+.svnr-hint {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: #c8102e;
 }
 
 .header-version-badge:hover {

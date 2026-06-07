@@ -1,6 +1,6 @@
 // UI-Logik: Form-State <-> DOM, Tabs, Listen-Items, Persistenz, Generierung.
 
-import { generateRandomPatient, generateRandomDoctor } from './faker.js';
+import { generateRandomPatient, generateRandomDoctor, isValidSvnr } from './faker.js';
 import { buildEntlassungsbrief } from './doctype-entlassung.js';
 import { LOGO_DATA_URI } from './logo-base64.js';
 import { HOSPITALS_BY_BUNDESLAND } from './hospitals.js';
@@ -354,6 +354,40 @@ function setupQuickAddDropdowns() {
     });
 }
 
+// SVNR validation -----------------------------------------------------------
+
+/** Returns true when the SVNR is acceptable for generation: empty OR structurally valid. */
+function svnrIsAcceptable(svnr) {
+    return !svnr || isValidSvnr(svnr);
+}
+
+function updateSvnrMarking() {
+    const input = document.querySelector('[data-bind="patient.svnr"]');
+    if (!input) return;
+    const svnr = input.value;
+    const invalid = svnr && !isValidSvnr(svnr);
+    input.classList.toggle('invalid', !!invalid);
+    let hint = input.parentElement?.querySelector('.svnr-hint');
+    if (invalid) {
+        if (!hint) {
+            hint = document.createElement('span');
+            hint.className = 'svnr-hint';
+            hint.textContent = '10-stellig mit gültiger Prüfziffer erforderlich';
+            input.insertAdjacentElement('afterend', hint);
+        }
+    } else if (hint) {
+        hint.remove();
+    }
+}
+
+function setupSvnrValidation() {
+    const input = document.querySelector('[data-bind="patient.svnr"]');
+    if (!input) return;
+    input.addEventListener('input', updateSvnrMarking);
+    input.addEventListener('blur', updateSvnrMarking);
+    updateSvnrMarking();
+}
+
 // Buttons -------------------------------------------------------------------
 function setStatus(msg) {
     document.getElementById('status').textContent = msg || '';
@@ -661,6 +695,13 @@ function setupButtons() {
     });
 
     document.getElementById('btn-generate-xml').addEventListener('click', () => {
+        if (!svnrIsAcceptable(state.patient.svnr)) {
+            setStatus('Ungültige SVNR — bitte korrigieren (10-stellig mit gültiger Prüfziffer).');
+            const input = document.querySelector('[data-bind="patient.svnr"]');
+            input?.focus();
+            updateSvnrMarking();
+            return;
+        }
         const xml = buildEntlassungsbrief(state);
         const filename = `entlassungsbrief-${(state.patient.familyName || 'anonym').toLowerCase()}-${(state.documentDate || '').slice(0, 10)}.xml`;
         downloadFile(filename, xml, 'application/xml');
@@ -668,6 +709,13 @@ function setupButtons() {
     });
 
     document.getElementById('btn-generate').addEventListener('click', async () => {
+        if (!svnrIsAcceptable(state.patient.svnr)) {
+            setStatus('Ungültige SVNR — bitte korrigieren (10-stellig mit gültiger Prüfziffer).');
+            const input = document.querySelector('[data-bind="patient.svnr"]');
+            input?.focus();
+            updateSvnrMarking();
+            return;
+        }
         const xml = buildEntlassungsbrief(state);
         const xmlFilename = `entlassungsbrief-${(state.patient.familyName || 'anonym').toLowerCase()}-${(state.documentDate || '').slice(0, 10)}.xml`;
         const pdfFilename = xmlFilename.replace(/\.xml$/i, '.pdf');
@@ -713,6 +761,7 @@ function rebindAll() {
     });
     Object.keys(LIST_TEMPLATES).forEach(renderList);
     updatePvVisibility();
+    updateSvnrMarking();
 }
 
 // Patientenverfügung — Felder je nach Status ein-/ausblenden
@@ -798,6 +847,7 @@ function init() {
     setupHospitalSelector();
     initVersionBadge();
 
+    setupSvnrValidation();
     setupPanelDialog('scenario-dialog', 'btn-open-scenarios', 'scenario-dialog-close');
     setupPanelDialog('xml-upload-dialog', 'btn-open-xml-upload', 'xml-upload-dialog-close');
 }
