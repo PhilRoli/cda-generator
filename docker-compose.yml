@@ -1,22 +1,7 @@
 services:
-    # One-shot init container: runs as root to fix ownership on the named
-    # volume before the api service starts.  Without this, Docker creates
-    # the volume with root:root ownership, which makes /app/data unwritable
-    # for appuser and causes SQLITE_READONLY on startup.
-    volume_init:
-        image: busybox
-        user: root
-        volumes:
-            - app_data:/app/data
-        command: sh -c "chown -R 65534:65534 /app/data || true"
-        restart: 'no'
-
     api:
         build: .
         restart: unless-stopped
-        depends_on:
-            volume_init:
-                condition: service_completed_successfully
         ports:
             - '127.0.0.1:${APP_PORT:-48718}:8080'
         environment:
@@ -24,7 +9,7 @@ services:
             APP_ELGA_LIB_DIR: /app/elga-lib
             APP_ELGA_WRAPPER_DIR: /app/scripts/cda2pdf-uebung
             APP_ELGA_STYLESHEET_PATH: /app/assets/elga-stylesheet-uebung.xsl
-            APP_WATERMARK_TEXT: ${APP_WATERMARK_TEXT:-\u00DCBUNGSDOKUMENt}
+            APP_WATERMARK_TEXT: ${APP_WATERMARK_TEXT:-\u00DCBUNGSDOKUMENT}
             APP_WATERMARK_OPACITY: ${APP_WATERMARK_OPACITY:-0.17}
             APP_ADMIN_TOKEN: ${APP_ADMIN_TOKEN:-}
             APP_CLEAN_PDF_PASSWORD: ${APP_CLEAN_PDF_PASSWORD:-}

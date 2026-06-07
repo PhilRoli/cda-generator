@@ -7,14 +7,14 @@ RUN mvn -q -DskipTests package
 FROM eclipse-temurin:21
 WORKDIR /app
 
-# System user/group with auto-assigned ids — the eclipse-temurin (Ubuntu 24.04)
-# base already occupies uid/gid 1000 with its default "ubuntu" user, so we must
-# not pin to 1000. chown below references the account by name.
+# Create a dedicated non-root user to run the application.
+# eclipse-temurin (Ubuntu 24.04) already uses uid/gid 1000 for its default
+# "ubuntu" user, so we let the system assign the next available id.
 RUN groupadd --system appuser && useradd --system --gid appuser --no-create-home --shell /usr/sbin/nologin appuser
 
-# gosu is used by entrypoint.sh to fix /app/data ownership at runtime when a
-# fresh Docker named volume is mounted (new volumes are created root:root,
-# overwriting the image-time chown that runs before the volume is attached).
+# gosu is used by entrypoint.sh to permanently drop from root to appuser
+# after fixing /app/data ownership on first boot (see entrypoint.sh).
+# A root->unprivileged exec via gosu requires no Linux capabilities.
 RUN apt-get update && apt-get install -y --no-install-recommends gosu && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/target/cda-uebung-server.jar /app/app.jar
@@ -26,7 +26,11 @@ RUN mkdir -p /app/data /app/elga-lib && \
     chmod +x /app/entrypoint.sh && \
     chown -R appuser:appuser /app
 
-USER appuser
+# NOTE: intentionally no USER directive here.
+# The container starts as root so entrypoint.sh can fix /app/data ownership
+# on first boot (Docker named volumes are created root:root, overwriting the
+# image-time chown above). entrypoint.sh then exec's via gosu to permanently
+# drop privileges to appuser before starting the JVM.
 
 EXPOSE 8080
 
