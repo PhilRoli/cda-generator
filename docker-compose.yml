@@ -12,6 +12,7 @@ services:
             APP_WATERMARK_TEXT: ${APP_WATERMARK_TEXT:-ÜBUNGSDOKUMENT}
             APP_WATERMARK_OPACITY: ${APP_WATERMARK_OPACITY:-0.17}
             APP_ADMIN_TOKEN: ${APP_ADMIN_TOKEN:-}
+            APP_CLEAN_PDF_PASSWORD: ${APP_CLEAN_PDF_PASSWORD:-}
         volumes:
             - app_data:/app/data
             - ./elga-lib:/app/elga-lib:ro

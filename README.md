@@ -85,7 +85,10 @@ APP_PORT=48718
 APP_ADMIN_TOKEN=<starkes-geheimnis>
 APP_WATERMARK_TEXT=ÜBUNGSDOKUMENT
 APP_WATERMARK_OPACITY=0.17
+APP_CLEAN_PDF_PASSWORD=mbi24
 ```
+
+`APP_CLEAN_PDF_PASSWORD` schützt den Endpoint zum Erzeugen eines **sauberen PDFs ohne Wasserzeichen** (`POST /api/pdf/upload`). Ohne gesetzten Wert ist diese Funktion deaktiviert (fail-closed).
 
 ### 3. ELGA-Libraries bereitstellen
 
