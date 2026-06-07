@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
@@ -17,6 +18,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ScenarioController.class)
+@Import(GlobalExceptionHandler.class)
 class ScenarioControllerPublicTest {
 
     @Autowired
@@ -61,12 +63,13 @@ class ScenarioControllerPublicTest {
     }
 
     @Test
-    void getById_notFound_returns404() throws Exception {
+    void getById_notFound_returns404WithIntentionalMessage() throws Exception {
         given(scenarioService.getByIdPublic("missing"))
             .willThrow(new org.springframework.web.server.ResponseStatusException(
                 org.springframework.http.HttpStatus.NOT_FOUND, "Szenario nicht gefunden."));
 
         mvc.perform(get("/api/scenarios/missing"))
-            .andExpect(status().isNotFound());
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Szenario nicht gefunden."));
     }
 }

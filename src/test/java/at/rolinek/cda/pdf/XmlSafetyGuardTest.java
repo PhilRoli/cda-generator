@@ -50,6 +50,7 @@ class XmlSafetyGuardTest {
                 .satisfies(ex -> {
                     ResponseStatusException rse = (ResponseStatusException) ex;
                     assertThat(rse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(rse.getReason()).isEqualTo("Ungültiges oder nicht erlaubtes XML.");
                 });
     }
 
