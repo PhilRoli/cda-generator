@@ -4,6 +4,7 @@ import { generateRandomPatient, generateRandomDoctor } from './faker.js';
 import { buildEntlassungsbrief } from './doctype-entlassung.js';
 import { LOGO_DATA_URI } from './logo-base64.js';
 import { HOSPITALS_BY_BUNDESLAND } from './hospitals.js';
+import { deepMerge } from './deep-merge.js';
 
 // APP_VERSION is fetched from /api/version at init — see initVersionBadge()
 
@@ -111,7 +112,7 @@ let state = loadState();
 function loadState() {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) return Object.assign(defaultState(), JSON.parse(raw));
+        if (raw) return deepMerge(defaultState(), JSON.parse(raw));
     } catch {}
     return defaultState();
 }
@@ -375,7 +376,7 @@ async function loadLocalScenarioFromFile(file) {
     try {
         const text = await file.text();
         const loaded = JSON.parse(text);
-        state = Object.assign(defaultState(), loaded);
+        state = deepMerge(defaultState(), loaded);
         saveState();
         rebindAll();
         setStatus(`Lokales Szenario geladen: ${file.name}`);
@@ -521,7 +522,7 @@ async function loadCloudScenario() {
     }
 
     const detail = await apiJson(url);
-    state = Object.assign(defaultState(), detail.state || {});
+    state = deepMerge(defaultState(), detail.state || {});
     saveState();
     rebindAll();
     setStatus(`Cloud-Szenario geladen: ${detail.title}`);
