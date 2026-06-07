@@ -1,5 +1,6 @@
 package at.rolinek.cda.config;
 
+import org.sqlite.SQLiteConfig;
 import org.sqlite.SQLiteDataSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,7 +20,10 @@ public class DatabaseConfig {
             Files.createDirectories(parent);
         }
 
-        SQLiteDataSource dataSource = new SQLiteDataSource();
+        SQLiteConfig config = new SQLiteConfig();
+        config.setJournalMode(SQLiteConfig.JournalMode.WAL);
+        config.setBusyTimeout(5000);
+        SQLiteDataSource dataSource = new SQLiteDataSource(config);
         dataSource.setUrl("jdbc:sqlite:" + dbPath);
         return dataSource;
     }
