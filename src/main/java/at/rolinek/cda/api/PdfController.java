@@ -119,7 +119,8 @@ public class PdfController {
         }
     }
 
-    private String toPdfFilename(String requested) {
+    // Package-private (and static) for unit testing in PdfControllerFilenameTest.
+    static String toPdfFilename(String requested) {
         String base = (requested == null || requested.isBlank()) ? "entlassungsbrief" : requested;
         base = base.replaceAll("\\.xml$", "").replaceAll("\\.pdf$", "");
         base = base.replaceAll("[^a-zA-Z0-9._-]", "-");
