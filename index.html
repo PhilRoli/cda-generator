@@ -52,7 +52,7 @@
             </section>
 
             <!-- Patient -->
-            <section class="form-section" data-tab="patient">
+            <section class="form-section">
                 <div class="section-actions">
                     <button class="btn" id="btn-faker">🎲 Zufällige Stammdaten</button>
                 </div>
@@ -80,7 +80,7 @@
                     /></label>
                     <label><span class="label-text">Telefon</span><input type="tel" data-bind="patient.phone" /></label>
                 </div>
-                <h2 style="margin-top: 20px">Adresse</h2>
+                <h2 class="mt-section">Adresse</h2>
                 <div class="grid-4">
                     <label
                         ><span class="label-text">Straße</span><input type="text" data-bind="patient.address.street"
@@ -97,9 +97,9 @@
             </section>
 
             <!-- Aufenthalt -->
-            <section class="form-section" data-tab="aufenthalt">
+            <section class="form-section">
                 <h2>Krankenhaus</h2>
-                <div style="margin-bottom: 12px;">
+                <div class="mb-control">
                     <label>
                         <span class="label-text">Krankenhaus (Quick-Select)</span>
                         <select id="org-hospital-select" disabled>
@@ -130,7 +130,7 @@
                     /></label>
                 </div>
 
-                <h2 style="margin-top: 20px">Aufenthalt</h2>
+                <h2 class="mt-section">Aufenthalt</h2>
                 <div class="grid-2">
                     <label>
                         <span class="label-text">Besuchstyp</span>
@@ -154,7 +154,7 @@
                     /></label>
                 </div>
 
-                <h2 style="margin-top: 20px">Behandelnde/r Ärztin/Arzt</h2>
+                <h2 class="mt-section">Behandelnde/r Ärztin/Arzt</h2>
                 <div class="section-actions">
                     <button class="btn" id="btn-faker-doctor">🎲 Zufälligen Arzt</button>
                 </div>
@@ -168,7 +168,7 @@
                     /></label>
                 </div>
 
-                <h2 style="margin-top: 20px">Dokument</h2>
+                <h2 class="mt-section">Dokument</h2>
                 <div class="grid-2">
                     <label
                         ><span class="label-text">Dokumentdatum</span><input type="datetime-local" data-bind="documentDate"
@@ -177,7 +177,7 @@
             </section>
 
             <!-- Brieftext -->
-            <section class="form-section" data-tab="brieftext">
+            <section class="form-section">
                 <h2>Brieftext / Anschreiben</h2>
                 <p class="section-help">
                     Das einleitende Anschreiben des Briefes. Lass das Feld leer für einen automatisch generierten
@@ -190,7 +190,7 @@
             </section>
 
             <!-- Aufnahmegrund -->
-            <section class="form-section" data-tab="aufnahmegrund">
+            <section class="form-section">
                 <h2>Aufnahmegrund</h2>
                 <p class="section-help">Kurzbeschreibung des Grundes für die stationäre Aufnahme.</p>
                 <label>
@@ -200,7 +200,7 @@
             </section>
 
             <!-- Diagnosen -->
-            <section class="form-section" data-tab="diagnosen">
+            <section class="form-section">
                 <h2>Diagnosen bei Entlassung</h2>
                 <p class="section-help">Pro Zeile eine Diagnose im Klartext.</p>
                 <div id="diagnosen-list" class="row-list"></div>
@@ -208,7 +208,7 @@
             </section>
 
             <!-- Allergien -->
-            <section class="form-section" data-tab="allergien">
+            <section class="form-section">
                 <h2>Allergien und Intoleranzen</h2>
                 <p class="section-help">Pro Zeile eine bekannte Allergie oder Unverträglichkeit.</p>
                 <div id="allergien-list" class="row-list"></div>
@@ -216,13 +216,13 @@
             </section>
 
             <!-- Anamnese -->
-            <section class="form-section" data-tab="anamnese">
+            <section class="form-section">
                 <h2>Anamnese / Vorerkrankungen</h2>
                 <p class="section-help">Bekannte Vorerkrankungen als Liste, ergänzend Freitext zur aktuellen Anamnese.</p>
-                <h2 style="font-size: 14px; margin: 8px 0">Vorerkrankungen</h2>
+                <h2 class="subhead">Vorerkrankungen</h2>
                 <div id="vorerkrankungen-list" class="row-list"></div>
                 <button class="btn" data-add="vorerkrankungen">+ Vorerkrankung hinzufügen</button>
-                <h2 style="font-size: 14px; margin: 24px 0 8px">Anamnese-Text (frei)</h2>
+                <h2 class="subhead-gap">Anamnese-Text (frei)</h2>
                 <label>
                     <span class="label-text">Freitext</span>
                     <textarea data-bind="anamnese" rows="6"></textarea>
@@ -230,7 +230,7 @@
             </section>
 
             <!-- Risikofaktoren -->
-            <section class="form-section" data-tab="risikofaktoren">
+            <section class="form-section">
                 <h2>Risikofaktoren</h2>
                 <p class="section-help">
                     Z.B. Nikotin-/Alkoholkonsum, familiäre Disposition, Adipositas, Bewegungsmangel, berufliche Exposition.
@@ -240,7 +240,7 @@
             </section>
 
             <!-- Verlauf -->
-            <section class="form-section" data-tab="verlauf">
+            <section class="form-section">
                 <h2>Aufenthaltsverlauf</h2>
                 <p class="section-help">Verlauf der Behandlung — Operationen, Komplikationen, Therapiewechsel, etc.</p>
                 <label>
@@ -250,7 +250,7 @@
             </section>
 
             <!-- Medikation -->
-            <section class="form-section" data-tab="medikation">
+            <section class="form-section">
                 <h2>Medikation bei Entlassung</h2>
                 <p class="section-help">
                     Medikament inkl. Stärke (z.B. <code>Ramipril 5 mg</code>), Schema-Format:
@@ -261,7 +261,7 @@
             </section>
 
             <!-- Empfehlungen -->
-            <section class="form-section" data-tab="empfehlungen">
+            <section class="form-section">
                 <h2>Empfehlungen / Weiteres Procedere</h2>
                 <p class="section-help">Z.B. Nachkontrollen, Wundversorgung, Mobilisationshinweise, Verhaltensregeln.</p>
                 <label>
@@ -271,7 +271,7 @@
             </section>
 
             <!-- Patientenverfügung -->
-            <section class="form-section" data-tab="patientenverfuegung">
+            <section class="form-section">
                 <h2>Patientenverfügungsstatus</h2>
                 <p class="section-help">
                     Status einer eventuell vorliegenden Patientenverfügung. Weitere Felder erscheinen je nach Status.
@@ -324,8 +324,8 @@
             <button class="btn primary" id="btn-generate">PDF generieren</button>
         </footer>
 
-        <input type="file" id="file-load" accept="application/json" style="display: none" />
-        <input type="file" id="xml-upload-input" accept=".xml,application/xml,text/xml" style="display: none" />
+        <input type="file" id="file-load" accept="application/json" class="hidden-file-input" />
+        <input type="file" id="xml-upload-input" accept=".xml,application/xml,text/xml" class="hidden-file-input" />
 
         <script type="module" src="js/app.js"></script>
 
@@ -355,7 +355,7 @@
                 <button class="btn" id="btn-local-load">Lokale Datei laden</button>
             </div>
             <div id="scenario-cloud-actions" class="hidden">
-                <label class="scenario-row" style="gap: 8px; align-items: center; cursor: pointer;">
+                <label class="scenario-row checkbox-row">
                     <input type="checkbox" id="cloud-show-all" />
                     <span>Alle Szenarien aller Benutzer anzeigen</span>
                 </label>

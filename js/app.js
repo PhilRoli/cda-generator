@@ -385,7 +385,7 @@ async function loadLocalScenarioFromFile(file) {
     }
 }
 
-async function apiJson(url, options = {}) {
+async function apiRequest(url, options = {}, responseType = 'json') {
     const response = await fetch(url, options);
     if (!response.ok) {
         let message = `HTTP ${response.status}`;
@@ -395,22 +395,13 @@ async function apiJson(url, options = {}) {
         } catch {}
         throw new Error(message);
     }
+    if (responseType === 'blob') return response.blob();
     if (response.status === 204) return null;
     return response.json();
 }
 
-async function apiPdf(url, options = {}) {
-    const response = await fetch(url, options);
-    if (!response.ok) {
-        let message = `HTTP ${response.status}`;
-        try {
-            const body = await response.json();
-            if (body?.message) message = body.message;
-        } catch {}
-        throw new Error(message);
-    }
-    return response.blob();
-}
+const apiJson = (url, options = {}) => apiRequest(url, options, 'json');
+const apiPdf  = (url, options = {}) => apiRequest(url, options, 'blob');
 
 function getCloudUsername() {
     const input = document.getElementById('cloud-username');

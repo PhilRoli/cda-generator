@@ -408,3 +408,39 @@ dialog.changelog-dialog h2 {
     line-height: 1.7;
     color: var(--text);
 }
+
+/* Utility classes for inline-style replacements */
+
+/* Subsection heading with top gap — replaces style="margin-top: 20px" on h2 */
+h2.mt-section {
+    margin-top: 20px;
+}
+
+/* Wrapper with bottom gap — replaces style="margin-bottom: 12px;" on div */
+.mb-control {
+    margin-bottom: 12px;
+}
+
+/* Compact sub-heading — replaces style="font-size: 14px; margin: 8px 0" on h2 */
+h2.subhead {
+    font-size: 14px;
+    margin: 8px 0;
+}
+
+/* Compact sub-heading with top gap — replaces style="font-size: 14px; margin: 24px 0 8px" on h2 */
+h2.subhead-gap {
+    font-size: 14px;
+    margin: 24px 0 8px;
+}
+
+/* Hidden file inputs — replaces style="display: none" on <input type="file"> */
+.hidden-file-input {
+    display: none;
+}
+
+/* Inline checkbox label row — replaces style="gap: 8px; align-items: center; cursor: pointer;" on label */
+.checkbox-row {
+    gap: 8px;
+    align-items: center;
+    cursor: pointer;
+}
