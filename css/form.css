@@ -457,3 +457,114 @@ h2.subhead-gap {
     align-items: center;
     cursor: pointer;
 }
+
+/* ── Toast notifications ─────────────────────────────────────────────────── */
+
+#toast-container {
+    position: fixed;
+    bottom: 64px; /* sit above the footer bar */
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column-reverse; /* newest toast appears at bottom (closest to footer) */
+    gap: 8px;
+    pointer-events: none;
+    max-width: min(420px, calc(100vw - 40px));
+}
+
+.toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.45;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
+    pointer-events: auto;
+    animation: toast-in 0.2s ease forwards;
+    word-break: break-word;
+}
+
+.toast.toast-success {
+    background: #eaf6ec;
+    border: 1px solid #7ecf89;
+    color: #1a4a22;
+}
+
+.toast.toast-error {
+    background: #fdf2f4;
+    border: 1px solid #e7c5cb;
+    color: #6b1020;
+}
+
+.toast.toast-info {
+    background: #eef4fb;
+    border: 1px solid #b3cee8;
+    color: #1a3a5c;
+}
+
+.toast .toast-msg {
+    flex: 1;
+}
+
+.toast .toast-dismiss {
+    flex: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0 2px;
+    color: inherit;
+    opacity: 0.6;
+    border-radius: 3px;
+    margin-top: 1px;
+}
+
+.toast .toast-dismiss:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.toast.toast-leaving {
+    animation: toast-out 0.22s ease forwards;
+}
+
+@keyframes toast-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toast-out {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(6px); }
+}
+
+/* ── Button busy / spinner ───────────────────────────────────────────────── */
+
+@keyframes btn-spin {
+    to { transform: rotate(360deg); }
+}
+
+.btn-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: btn-spin 0.7s linear infinite;
+    flex: none;
+}
+
+/* Prevent button from collapsing when label text changes */
+button.btn.busy {
+    min-width: var(--btn-stable-width);
+    justify-content: center;
+}
+
+button.btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}

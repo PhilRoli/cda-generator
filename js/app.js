@@ -338,7 +338,9 @@ function setupQuickAddDropdowns() {
             if (Number.isNaN(idx) || !options[idx]) return;
             const selectedEntry = options[idx];
             if (hasSameListItem(name, selectedEntry)) {
-                setStatus(`Eintrag bereits vorhanden: ${listItemLabel(name, selectedEntry)}`);
+                const msg = `Eintrag bereits vorhanden: ${listItemLabel(name, selectedEntry)}`;
+                setStatus(msg);
+                notify(msg, 'info');
                 select.value = '';
                 return;
             }
@@ -393,6 +395,82 @@ function setStatus(msg) {
     document.getElementById('status').textContent = msg || '';
 }
 
+// Toast notifications -------------------------------------------------------
+const TOAST_AUTO_DISMISS_MS = { success: 4000, info: 5000, error: null /* sticky */ };
+
+/**
+ * Show a toast notification.
+ * @param {string} message
+ * @param {'success'|'error'|'info'} type
+ */
+function notify(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    // Errors use role="alert" for immediate ARIA announcement; others use the
+    // container's aria-live="polite" region.
+    if (type === 'error') toast.setAttribute('role', 'alert');
+
+    const msgSpan = document.createElement('span');
+    msgSpan.className = 'toast-msg';
+    msgSpan.textContent = message;
+    toast.appendChild(msgSpan);
+
+    const dismissBtn = document.createElement('button');
+    dismissBtn.className = 'toast-dismiss';
+    dismissBtn.setAttribute('aria-label', 'Schließen');
+    dismissBtn.textContent = '✕';
+    dismissBtn.addEventListener('click', () => removeToast(toast));
+    toast.appendChild(dismissBtn);
+
+    container.appendChild(toast);
+
+    const autoMs = TOAST_AUTO_DISMISS_MS[type];
+    if (autoMs != null) {
+        setTimeout(() => removeToast(toast), autoMs);
+    }
+}
+
+function removeToast(toast) {
+    if (!toast.isConnected) return;
+    toast.classList.add('toast-leaving');
+    toast.addEventListener('animationend', () => toast.remove(), { once: true });
+}
+
+// Button busy helper --------------------------------------------------------
+/**
+ * Disables `button`, shows a spinner + `busyLabel` while `asyncFn` runs,
+ * then always restores the button state.
+ * @param {HTMLButtonElement} button
+ * @param {string} busyLabel  Text shown next to the spinner during the operation.
+ * @param {() => Promise<*>} asyncFn
+ * @returns {Promise<*>}  Resolves/rejects with the return value of asyncFn.
+ */
+async function withButtonBusy(button, busyLabel, asyncFn) {
+    const originalHTML = button.innerHTML;
+    // Capture the current rendered width so the button doesn't collapse
+    button.style.setProperty('--btn-stable-width', button.offsetWidth + 'px');
+    button.classList.add('busy');
+    button.disabled = true;
+
+    const spinner = document.createElement('span');
+    spinner.className = 'btn-spinner';
+    button.innerHTML = '';
+    button.appendChild(spinner);
+    button.appendChild(document.createTextNode(' ' + busyLabel));
+
+    try {
+        return await asyncFn();
+    } finally {
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+        button.classList.remove('busy');
+        button.style.removeProperty('--btn-stable-width');
+    }
+}
+
 function cloudScenarioTitleSuggestion() {
     const family = (state.patient?.familyName || 'anonym').toLowerCase();
     const date = (state.documentDate || new Date().toISOString()).slice(0, 10);
@@ -402,7 +480,9 @@ function cloudScenarioTitleSuggestion() {
 function saveLocalScenario() {
     const filename = `szenario-${(state.patient.familyName || 'anonym').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.json`;
     downloadFile(filename, JSON.stringify(state, null, 2), 'application/json');
-    setStatus(`Lokales Szenario gespeichert: ${filename}`);
+    const msg = `Lokales Szenario gespeichert: ${filename}`;
+    setStatus(msg);
+    notify(msg, 'success');
 }
 
 async function loadLocalScenarioFromFile(file) {
@@ -413,9 +493,13 @@ async function loadLocalScenarioFromFile(file) {
         state = deepMerge(defaultState(), loaded);
         saveState();
         rebindAll();
-        setStatus(`Lokales Szenario geladen: ${file.name}`);
+        const msg = `Lokales Szenario geladen: ${file.name}`;
+        setStatus(msg);
+        notify(msg, 'success');
     } catch (err) {
-        setStatus(`Fehler beim lokalen Laden: ${err.message}`);
+        const msg = `Fehler beim lokalen Laden: ${err.message}`;
+        setStatus(msg);
+        notify(msg, 'error');
     }
 }
 
@@ -453,7 +537,11 @@ async function refreshCloudScenarios(options = {}) {
         const list = await apiJson('/api/scenarios/all');
         cloudScenarios = list;
         renderCloudScenarioSelect();
-        if (!silent) setStatus(`Cloud-Liste aktualisiert: ${cloudScenarios.length} Szenario(s) von allen Benutzern.`);
+        if (!silent) {
+            const msg = `Cloud-Liste aktualisiert: ${cloudScenarios.length} Szenario(s) von allen Benutzern.`;
+            setStatus(msg);
+            notify(msg, 'success');
+        }
         return;
     }
 
@@ -461,13 +549,21 @@ async function refreshCloudScenarios(options = {}) {
     if (!username) {
         cloudScenarios = [];
         renderCloudScenarioSelect();
-        if (!silent) setStatus('Bitte zuerst einen Benutzernamen für Cloud-Szenarien eingeben.');
+        if (!silent) {
+            const msg = 'Bitte zuerst einen Benutzernamen für Cloud-Szenarien eingeben.';
+            setStatus(msg);
+            notify(msg, 'info');
+        }
         return;
     }
     const list = await apiJson(`/api/scenarios?username=${encodeURIComponent(username)}`);
     cloudScenarios = list;
     renderCloudScenarioSelect();
-    if (!silent) setStatus(`Cloud-Liste aktualisiert: ${cloudScenarios.length} Szenario(s).`);
+    if (!silent) {
+        const msg = `Cloud-Liste aktualisiert: ${cloudScenarios.length} Szenario(s).`;
+        setStatus(msg);
+        notify(msg, 'success');
+    }
 }
 
 function renderCloudScenarioSelect() {
@@ -502,7 +598,9 @@ function renderCloudScenarioSelect() {
 async function saveCloudScenario() {
     const username = getCloudUsername();
     if (!username) {
-        setStatus('Bitte zuerst einen Benutzernamen für Cloud-Speicherung eingeben.');
+        const msg = 'Bitte zuerst einen Benutzernamen für Cloud-Speicherung eingeben.';
+        setStatus(msg);
+        notify(msg, 'info');
         return;
     }
 
@@ -525,12 +623,16 @@ async function saveCloudScenario() {
 
     selectedCloudScenarioId = saved.id;
     await refreshCloudScenarios();
-    setStatus(`Cloud-Szenario gespeichert: ${saved.title}`);
+    const savedMsg = `Cloud-Szenario gespeichert: ${saved.title}`;
+    setStatus(savedMsg);
+    notify(savedMsg, 'success');
 }
 
 async function loadCloudScenario() {
     if (!selectedCloudScenarioId) {
-        setStatus('Bitte zuerst ein Cloud-Szenario auswählen.');
+        const msg = 'Bitte zuerst ein Cloud-Szenario auswählen.';
+        setStatus(msg);
+        notify(msg, 'info');
         return;
     }
 
@@ -540,7 +642,9 @@ async function loadCloudScenario() {
     } else {
         const username = getCloudUsername();
         if (!username) {
-            setStatus('Bitte zuerst einen Benutzernamen eingeben.');
+            const msg = 'Bitte zuerst einen Benutzernamen eingeben.';
+            setStatus(msg);
+            notify(msg, 'info');
             return;
         }
         url = `/api/scenarios/${encodeURIComponent(selectedCloudScenarioId)}?username=${encodeURIComponent(username)}`;
@@ -550,19 +654,25 @@ async function loadCloudScenario() {
     state = deepMerge(defaultState(), detail.state || {});
     saveState();
     rebindAll();
-    setStatus(`Cloud-Szenario geladen: ${detail.title}`);
+    const loadMsg = `Cloud-Szenario geladen: ${detail.title}`;
+    setStatus(loadMsg);
+    notify(loadMsg, 'success');
 }
 
 async function deleteCloudScenarioAsAdmin() {
     if (!selectedCloudScenarioId) {
-        setStatus('Bitte zuerst ein Cloud-Szenario auswählen.');
+        const msg = 'Bitte zuerst ein Cloud-Szenario auswählen.';
+        setStatus(msg);
+        notify(msg, 'info');
         return;
     }
     const token = prompt('Admin-Token eingeben:');
     if (token === null) return;
     const trimmedToken = token.trim();
     if (!trimmedToken) {
-        setStatus('Bitte Admin-Token eingeben.');
+        const msg = 'Bitte Admin-Token eingeben.';
+        setStatus(msg);
+        notify(msg, 'info');
         return;
     }
     if (!confirm('Ausgewähltes Cloud-Szenario als Admin löschen?')) return;
@@ -573,7 +683,9 @@ async function deleteCloudScenarioAsAdmin() {
     });
     selectedCloudScenarioId = null;
     await refreshCloudScenarios();
-    setStatus('Cloud-Szenario per Admin-Recht gelöscht.');
+    const deleteMsg = 'Cloud-Szenario per Admin-Recht gelöscht.';
+    setStatus(deleteMsg);
+    notify(deleteMsg, 'success');
 }
 
 function updateScenarioSourceVisibility() {
@@ -616,7 +728,9 @@ function setupScenarioManager() {
         try {
             await refreshCloudScenarios({ silent: false });
         } catch (err) {
-            setStatus(`Cloud-Refresh fehlgeschlagen: ${err.message}`);
+            const msg = `Cloud-Refresh fehlgeschlagen: ${err.message}`;
+            setStatus(msg);
+            notify(msg, 'error');
         }
     });
     localSaveBtn.addEventListener('click', saveLocalScenario);
@@ -631,28 +745,36 @@ function setupScenarioManager() {
         try {
             await refreshCloudScenarios();
         } catch (err) {
-            setStatus(`Cloud-Refresh fehlgeschlagen: ${err.message}`);
+            const msg = `Cloud-Refresh fehlgeschlagen: ${err.message}`;
+            setStatus(msg);
+            notify(msg, 'error');
         }
     });
     document.getElementById('btn-cloud-save').addEventListener('click', async () => {
         try {
             await saveCloudScenario();
         } catch (err) {
-            setStatus(`Cloud-Speicherung fehlgeschlagen: ${err.message}`);
+            const msg = `Cloud-Speicherung fehlgeschlagen: ${err.message}`;
+            setStatus(msg);
+            notify(msg, 'error');
         }
     });
     document.getElementById('btn-cloud-load').addEventListener('click', async () => {
         try {
             await loadCloudScenario();
         } catch (err) {
-            setStatus(`Cloud-Laden fehlgeschlagen: ${err.message}`);
+            const msg = `Cloud-Laden fehlgeschlagen: ${err.message}`;
+            setStatus(msg);
+            notify(msg, 'error');
         }
     });
     document.getElementById('btn-cloud-delete-admin').addEventListener('click', async () => {
         try {
             await deleteCloudScenarioAsAdmin();
         } catch (err) {
-            setStatus(`Admin-Löschen fehlgeschlagen: ${err.message}`);
+            const msg = `Admin-Löschen fehlgeschlagen: ${err.message}`;
+            setStatus(msg);
+            notify(msg, 'error');
         }
     });
 
@@ -672,16 +794,18 @@ function setupButtons() {
         state.patient = generateRandomPatient(bl);
         saveState();
         rebindAll();
-        setStatus(
-            `Stammdaten generiert: ${state.patient.givenName} ${state.patient.familyName}, SVNR ${state.patient.svnr}`,
-        );
+        const msg = `Stammdaten generiert: ${state.patient.givenName} ${state.patient.familyName}, SVNR ${state.patient.svnr}`;
+        setStatus(msg);
+        notify(msg, 'success');
     });
 
     document.getElementById('btn-faker-doctor').addEventListener('click', () => {
         state.author = generateRandomDoctor();
         saveState();
         rebindAll();
-        setStatus(`Arzt generiert: ${state.author.title} ${state.author.givenName} ${state.author.familyName}`);
+        const msg = `Arzt generiert: ${state.author.title} ${state.author.givenName} ${state.author.familyName}`;
+        setStatus(msg);
+        notify(msg, 'success');
     });
 
     setupXmlUpload();
@@ -691,12 +815,16 @@ function setupButtons() {
         state = defaultState();
         saveState();
         rebindAll();
-        setStatus('Formular zurückgesetzt.');
+        const msg = 'Formular zurückgesetzt.';
+        setStatus(msg);
+        notify(msg, 'info');
     });
 
     document.getElementById('btn-generate-xml').addEventListener('click', () => {
         if (!svnrIsAcceptable(state.patient.svnr)) {
-            setStatus('Ungültige SVNR — bitte korrigieren (10-stellig mit gültiger Prüfziffer).');
+            const errMsg = 'Ungültige SVNR — bitte korrigieren (10-stellig mit gültiger Prüfziffer).';
+            setStatus(errMsg);
+            notify(errMsg, 'error');
             const input = document.querySelector('[data-bind="patient.svnr"]');
             input?.focus();
             updateSvnrMarking();
@@ -705,12 +833,17 @@ function setupButtons() {
         const xml = buildEntlassungsbrief(state);
         const filename = `entlassungsbrief-${(state.patient.familyName || 'anonym').toLowerCase()}-${(state.documentDate || '').slice(0, 10)}.xml`;
         downloadFile(filename, xml, 'application/xml');
-        setStatus(`XML generiert: ${filename}`);
+        const xmlMsg = `XML generiert: ${filename}`;
+        setStatus(xmlMsg);
+        notify(xmlMsg, 'success');
     });
 
-    document.getElementById('btn-generate').addEventListener('click', async () => {
+    const btnGenerate = document.getElementById('btn-generate');
+    btnGenerate.addEventListener('click', async () => {
         if (!svnrIsAcceptable(state.patient.svnr)) {
-            setStatus('Ungültige SVNR — bitte korrigieren (10-stellig mit gültiger Prüfziffer).');
+            const errMsg = 'Ungültige SVNR — bitte korrigieren (10-stellig mit gültiger Prüfziffer).';
+            setStatus(errMsg);
+            notify(errMsg, 'error');
             const input = document.querySelector('[data-bind="patient.svnr"]');
             input?.focus();
             updateSvnrMarking();
@@ -719,17 +852,23 @@ function setupButtons() {
         const xml = buildEntlassungsbrief(state);
         const xmlFilename = `entlassungsbrief-${(state.patient.familyName || 'anonym').toLowerCase()}-${(state.documentDate || '').slice(0, 10)}.xml`;
         const pdfFilename = xmlFilename.replace(/\.xml$/i, '.pdf');
-        try {
-            const pdfBlob = await apiPdf('/api/pdf', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ xml, fileName: pdfFilename }),
-            });
-            downloadBlob(pdfFilename, pdfBlob);
-            setStatus(`PDF generiert: ${pdfFilename}`);
-        } catch (err) {
-            setStatus(`PDF-Generierung fehlgeschlagen: ${err.message}`);
-        }
+        await withButtonBusy(btnGenerate, 'wird erstellt…', async () => {
+            try {
+                const pdfBlob = await apiPdf('/api/pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ xml, fileName: pdfFilename }),
+                });
+                downloadBlob(pdfFilename, pdfBlob);
+                const successMsg = `PDF generiert: ${pdfFilename}`;
+                setStatus(successMsg);
+                notify(successMsg, 'success');
+            } catch (err) {
+                const errMsg = `PDF-Generierung fehlgeschlagen: ${err.message}`;
+                setStatus(errMsg);
+                notify(errMsg, 'error');
+            }
+        });
     });
 
 }
@@ -813,7 +952,9 @@ function setupHospitalSelector() {
         state.organization.address.country = 'A';
         saveState();
         rebindAll();
-        setStatus(`Krankenhaus ausgewählt: ${h.name}`);
+        const hospMsg = `Krankenhaus ausgewählt: ${h.name}`;
+        setStatus(hospMsg);
+        notify(hospMsg, 'info');
     });
 }
 
@@ -885,27 +1026,27 @@ function setupXmlUpload() {
         if (!file) return;
 
         const pw = passwordInput?.value ?? '';
-
-        setStatus('PDF wird generiert…');
-        btnConvert.disabled = true;
-
         const formData = new FormData();
         formData.append('file', file);
 
-        try {
-            const pdfBlob = await apiPdf('/api/pdf/upload', {
-                method: 'POST',
-                body: formData,
-                headers: { 'X-Clean-Pdf-Password': pw },
-            });
-            const pdfFilename = file.name.replace(/\.xml$/i, '.pdf');
-            downloadBlob(pdfFilename, pdfBlob);
-            setStatus(`PDF generiert: ${pdfFilename}`);
-        } catch (err) {
-            setStatus(`PDF-Generierung fehlgeschlagen: ${err.message}`);
-        } finally {
-            btnConvert.disabled = false;
-        }
+        await withButtonBusy(btnConvert, 'wird erstellt…', async () => {
+            try {
+                const pdfBlob = await apiPdf('/api/pdf/upload', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Clean-Pdf-Password': pw },
+                });
+                const pdfFilename = file.name.replace(/\.xml$/i, '.pdf');
+                downloadBlob(pdfFilename, pdfBlob);
+                const successMsg = `PDF generiert: ${pdfFilename}`;
+                setStatus(successMsg);
+                notify(successMsg, 'success');
+            } catch (err) {
+                const errMsg = `PDF-Generierung fehlgeschlagen: ${err.message}`;
+                setStatus(errMsg);
+                notify(errMsg, 'error');
+            }
+        });
     });
 }
 

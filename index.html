@@ -327,6 +327,9 @@
         <input type="file" id="file-load" accept="application/json" class="hidden-file-input" />
         <input type="file" id="xml-upload-input" accept=".xml,application/xml,text/xml" class="hidden-file-input" />
 
+        <!-- Toast notifications (role="alert" for errors is set per-toast in JS) -->
+        <div id="toast-container" aria-live="polite" aria-atomic="false"></div>
+
         <script type="module" src="js/app.js"></script>
 
         <dialog id="scenario-dialog" class="panel-dialog">
