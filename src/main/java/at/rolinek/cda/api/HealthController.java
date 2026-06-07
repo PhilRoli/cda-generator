@@ -1,6 +1,6 @@
 package at.rolinek.cda.api;
 
-import org.springframework.beans.factory.annotation.Value;
+import at.rolinek.cda.config.AppProperties;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -11,8 +11,11 @@ import java.util.Map;
 @RequestMapping("/api")
 public class HealthController {
 
-    @Value("${app.version}")
-    private String appVersion;
+    private final String appVersion;
+
+    public HealthController(AppProperties properties) {
+        this.appVersion = properties.getVersion();
+    }
 
     @GetMapping("/healthz")
     public Map<String, String> healthz() {

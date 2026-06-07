@@ -782,15 +782,15 @@ async function initVersionBadge() {
     const changelogDialog = document.getElementById('changelog-dialog');
     if (!badge || !changelogDialog) return;
 
+    badge.addEventListener('click', () => changelogDialog.showModal());
+    document.getElementById('changelog-close')?.addEventListener('click', () => changelogDialog.close());
+
     try {
         const data = await apiJson('/api/version');
         if (data?.version) badge.textContent = `v${data.version}`;
     } catch {
         // If the fetch fails, leave the badge empty rather than showing a stale hardcoded value
     }
-
-    badge.addEventListener('click', () => changelogDialog.showModal());
-    document.getElementById('changelog-close')?.addEventListener('click', () => changelogDialog.close());
 }
 
 // Init ----------------------------------------------------------------------

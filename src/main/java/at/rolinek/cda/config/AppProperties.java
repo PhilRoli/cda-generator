@@ -4,6 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "app")
 public class AppProperties {
+    private String version = "unknown";
     private String dbPath = "data/cda-uebung.db";
     private String elgaLibDir = "elga-lib";
     private String elgaWrapperDir = "scripts/cda2pdf-uebung";
@@ -11,6 +12,14 @@ public class AppProperties {
     private String watermarkText = "ÜBUNGSDOKUMENT!";
     private float watermarkOpacity = 0.17f;
     private String adminToken = "";
+
+    public String getVersion() {
+        return version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
+    }
 
     public String getDbPath() {
         return dbPath;
