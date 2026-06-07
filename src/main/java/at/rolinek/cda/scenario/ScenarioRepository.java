@@ -90,6 +90,25 @@ public class ScenarioRepository {
             record.id());
     }
 
+    public void upsert(ScenarioRecord record) {
+        jdbcTemplate.update("""
+                INSERT INTO scenarios (id, username, title, payload_json, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    username   = excluded.username,
+                    title      = excluded.title,
+                    payload_json = excluded.payload_json,
+                    created_at = excluded.created_at,
+                    updated_at = excluded.updated_at
+                """,
+            record.id(),
+            record.username(),
+            record.title(),
+            record.payloadJson(),
+            record.createdAt(),
+            record.updatedAt());
+    }
+
     public int deleteById(String id) {
         return jdbcTemplate.update("DELETE FROM scenarios WHERE id = ?", id);
     }

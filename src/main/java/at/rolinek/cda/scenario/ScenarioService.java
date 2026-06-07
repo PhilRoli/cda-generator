@@ -102,6 +102,40 @@ public class ScenarioService {
         return updated;
     }
 
+    public ExportResult exportAll(String bearerToken) {
+        requireAdminToken(bearerToken);
+        List<ScenarioRecord> records = repository.listAll();
+        String exportedAt = OffsetDateTime.now(ZoneOffset.UTC).format(TS);
+        List<ExportEntry> entries = records.stream()
+            .map(r -> new ExportEntry(r.id(), r.username(), r.title(), payloadToJson(r), r.createdAt(), r.updatedAt()))
+            .toList();
+        return new ExportResult(exportedAt, entries.size(), entries);
+    }
+
+    public int adminImport(List<ImportEntry> scenarios, String bearerToken) {
+        requireAdminToken(bearerToken);
+        if (scenarios == null || scenarios.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Keine Szenarien zum Importieren.");
+        }
+        for (ImportEntry entry : scenarios) {
+            String payloadJson;
+            try {
+                payloadJson = objectMapper.writeValueAsString(entry.state());
+            } catch (Exception ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ungültiger Szenario-Inhalt.");
+            }
+            repository.upsert(new ScenarioRecord(
+                entry.id(),
+                entry.username(),
+                entry.title(),
+                payloadJson,
+                entry.createdAt(),
+                entry.updatedAt()
+            ));
+        }
+        return scenarios.size();
+    }
+
     public void adminDelete(String id, String bearerToken) {
         requireAdminToken(bearerToken);
         int deleted = repository.deleteById(id);
@@ -164,4 +198,10 @@ public class ScenarioService {
     }
 
     public record ScenarioSaveRequest(String id, String username, String title, JsonNode state) {}
+
+    public record ExportEntry(String id, String username, String title, JsonNode state, String createdAt, String updatedAt) {}
+
+    public record ExportResult(String exportedAt, int count, List<ExportEntry> scenarios) {}
+
+    public record ImportEntry(String id, String username, String title, JsonNode state, String createdAt, String updatedAt) {}
 }

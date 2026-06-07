@@ -14,6 +14,7 @@ public class AppProperties {
     private String adminToken = "";
     private String cleanPdfPassword = "";
     private final Pdf pdf = new Pdf();
+    private final Backup backup = new Backup();
 
     public String getVersion() {
         return version;
@@ -89,6 +90,44 @@ public class AppProperties {
 
     public Pdf getPdf() {
         return pdf;
+    }
+
+    public Backup getBackup() {
+        return backup;
+    }
+
+    /** Backup-scheduler configuration. */
+    public static class Backup {
+        /** Directory where timestamped backup files are written. */
+        private String dir = "data/backups";
+        /** How many milliseconds between automatic backups (default 24 h). */
+        private long intervalMs = 86_400_000L;
+        /** How many backup files to keep (oldest pruned first). */
+        private int retention = 14;
+
+        public String getDir() {
+            return dir;
+        }
+
+        public void setDir(String dir) {
+            this.dir = dir;
+        }
+
+        public long getIntervalMs() {
+            return intervalMs;
+        }
+
+        public void setIntervalMs(long intervalMs) {
+            this.intervalMs = intervalMs;
+        }
+
+        public int getRetention() {
+            return retention;
+        }
+
+        public void setRetention(int retention) {
+            this.retention = retention;
+        }
     }
 
     /**
