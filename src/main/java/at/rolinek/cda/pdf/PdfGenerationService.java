@@ -43,39 +43,44 @@ public class PdfGenerationService {
     private final Path stylesheetPath;
     private final String watermarkText;
     private final float watermarkOpacity;
+    private final XmlSafetyGuard xmlSafetyGuard;
 
-    public PdfGenerationService(AppProperties properties) {
+    public PdfGenerationService(AppProperties properties, XmlSafetyGuard xmlSafetyGuard) {
         this.elgaLibDir = Path.of(properties.getElgaLibDir()).toAbsolutePath().normalize();
         this.elgaWrapperDir = Path.of(properties.getElgaWrapperDir()).toAbsolutePath().normalize();
         this.stylesheetPath = Path.of(properties.getElgaStylesheetPath()).toAbsolutePath().normalize();
         this.watermarkText = properties.getWatermarkText();
         this.watermarkOpacity = properties.getWatermarkOpacity();
+        this.xmlSafetyGuard = xmlSafetyGuard;
     }
 
     public byte[] generatePdf(String xmlContent) {
+        xmlSafetyGuard.requireSafe(xmlContent);
         try {
             byte[] pdf = convertWithElgaWrapper(xmlContent, WRAPPER_CLASS);
             return applyWatermark(pdf);
         } catch (ResponseStatusException ex) {
             throw ex;
         } catch (Exception ex) {
-            LOG.error("PDF generation failed", ex);
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PDF-Erstellung fehlgeschlagen: " + ex.getMessage());
+            LOG.error("PDF-Erstellung fehlgeschlagen", ex);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PDF-Erstellung fehlgeschlagen.");
         }
     }
 
     public byte[] generatePdfClean(String xmlContent) {
+        xmlSafetyGuard.requireSafe(xmlContent);
         if (!Files.exists(elgaWrapperDir.resolve(CLEAN_WRAPPER_CLASS + ".class"))) {
+            LOG.warn("Sauberer PDF-Konverter nicht bereit (Kompilierung ausstehend): {}", elgaWrapperDir);
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                "Sauberer PDF-Konverter ist noch nicht bereit (Kompilierung ausstehend). Bitte kurz warten.");
+                "PDF-Konverter ist derzeit nicht verfügbar.");
         }
         try {
             return convertWithElgaWrapper(xmlContent, CLEAN_WRAPPER_CLASS);
         } catch (ResponseStatusException ex) {
             throw ex;
         } catch (Exception ex) {
-            LOG.error("Clean PDF generation failed", ex);
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PDF-Erstellung fehlgeschlagen: " + ex.getMessage());
+            LOG.error("Saubere PDF-Erstellung fehlgeschlagen", ex);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PDF-Erstellung fehlgeschlagen.");
         }
     }
 
@@ -112,10 +117,8 @@ public class PdfGenerationService {
 
             int exit = process.waitFor();
             if (exit != 0 || !Files.exists(outputPdf)) {
-                throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "ELGA-Konvertierung fehlgeschlagen: " + (output.isBlank() ? "unbekannter Fehler" : output.trim())
-                );
+                LOG.error("ELGA-Konvertierung fehlgeschlagen (exit={}): {}", exit, output.isBlank() ? "(keine Ausgabe)" : output.trim());
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PDF-Erstellung fehlgeschlagen.");
             }
             return Files.readAllBytes(outputPdf);
         } finally {
@@ -152,23 +155,24 @@ public class PdfGenerationService {
 
     private void ensureConverterFiles() {
         if (!Files.isDirectory(elgaLibDir)) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "ELGA-Library-Verzeichnis fehlt: " + elgaLibDir);
+            LOG.error("ELGA-Library-Verzeichnis fehlt: {}", elgaLibDir);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "PDF-Konverter ist derzeit nicht verfügbar.");
         }
         for (String jar : ELGA_REQUIRED_JARS) {
             Path jarPath = elgaLibDir.resolve(jar);
             if (!Files.exists(jarPath)) {
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "ELGA-Library fehlt: " + jarPath);
+                LOG.error("ELGA-Library fehlt: {}", jarPath);
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "PDF-Konverter ist derzeit nicht verfügbar.");
             }
         }
 
         if (!Files.exists(elgaWrapperDir.resolve("CDA2PDFUebung.class"))) {
-            throw new ResponseStatusException(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "Wrapper-Klasse nicht gefunden: " + elgaWrapperDir.resolve("CDA2PDFUebung.class")
-            );
+            LOG.error("Wrapper-Klasse nicht gefunden: {}", elgaWrapperDir.resolve("CDA2PDFUebung.class"));
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "PDF-Konverter ist derzeit nicht verfügbar.");
         }
         if (!Files.exists(stylesheetPath)) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Stylesheet fehlt: " + stylesheetPath);
+            LOG.error("Stylesheet fehlt: {}", stylesheetPath);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "PDF-Konverter ist derzeit nicht verfügbar.");
         }
     }
 
