@@ -12,6 +12,7 @@ public class AppProperties {
     private String watermarkText = "ÜBUNGSDOKUMENT!";
     private float watermarkOpacity = 0.17f;
     private String adminToken = "";
+    private String cleanPdfPassword = "";
     private final Pdf pdf = new Pdf();
 
     public String getVersion() {
@@ -76,6 +77,14 @@ public class AppProperties {
 
     public void setAdminToken(String adminToken) {
         this.adminToken = adminToken;
+    }
+
+    public String getCleanPdfPassword() {
+        return cleanPdfPassword;
+    }
+
+    public void setCleanPdfPassword(String cleanPdfPassword) {
+        this.cleanPdfPassword = cleanPdfPassword;
     }
 
     public Pdf getPdf() {

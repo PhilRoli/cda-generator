@@ -823,6 +823,7 @@ function setupXmlUpload() {
     const btnChoose = document.getElementById('btn-xml-upload');
     const btnConvert = document.getElementById('btn-xml-convert');
     const filenameDisplay = document.getElementById('xml-upload-filename');
+    const passwordInput = document.getElementById('xml-convert-password');
 
     btnChoose.addEventListener('click', () => fileInput.click());
 
@@ -841,6 +842,8 @@ function setupXmlUpload() {
         const file = fileInput.files[0];
         if (!file) return;
 
+        const pw = passwordInput?.value ?? '';
+
         setStatus('PDF wird generiert…');
         btnConvert.disabled = true;
 
@@ -848,7 +851,11 @@ function setupXmlUpload() {
         formData.append('file', file);
 
         try {
-            const pdfBlob = await apiPdf('/api/pdf/upload', { method: 'POST', body: formData });
+            const pdfBlob = await apiPdf('/api/pdf/upload', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Clean-Pdf-Password': pw },
+            });
             const pdfFilename = file.name.replace(/\.xml$/i, '.pdf');
             downloadBlob(pdfFilename, pdfBlob);
             setStatus(`PDF generiert: ${pdfFilename}`);
