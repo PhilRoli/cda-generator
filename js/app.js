@@ -5,7 +5,7 @@ import { buildEntlassungsbrief } from './doctype-entlassung.js';
 import { LOGO_DATA_URI } from './logo-base64.js';
 import { HOSPITALS_BY_BUNDESLAND } from './hospitals.js';
 
-const APP_VERSION = '1.3.0';
+// APP_VERSION is fetched from /api/version at init — see initVersionBadge()
 
 const STORAGE_KEY = 'cda-uebung:last';
 const CLOUD_USER_KEY = 'cda-uebung:cloud-username';
@@ -776,6 +776,23 @@ function setupHospitalSelector() {
     });
 }
 
+// Version badge — source of truth is the Maven version exposed via /api/version
+async function initVersionBadge() {
+    const badge = document.getElementById('version-badge');
+    const changelogDialog = document.getElementById('changelog-dialog');
+    if (!badge || !changelogDialog) return;
+
+    try {
+        const data = await apiJson('/api/version');
+        if (data?.version) badge.textContent = `v${data.version}`;
+    } catch {
+        // If the fetch fails, leave the badge empty rather than showing a stale hardcoded value
+    }
+
+    badge.addEventListener('click', () => changelogDialog.showModal());
+    document.getElementById('changelog-close')?.addEventListener('click', () => changelogDialog.close());
+}
+
 // Init ----------------------------------------------------------------------
 function init() {
     document.getElementById('header-logo').src = LOGO_DATA_URI;
@@ -787,13 +804,7 @@ function init() {
     setupScenarioManager();
     setupPvVisibility();
     setupHospitalSelector();
-    const badge = document.getElementById('version-badge');
-    const changelogDialog = document.getElementById('changelog-dialog');
-    if (badge && changelogDialog) {
-        badge.textContent = `v${APP_VERSION}`;
-        badge.addEventListener('click', () => changelogDialog.showModal());
-        document.getElementById('changelog-close')?.addEventListener('click', () => changelogDialog.close());
-    }
+    initVersionBadge();
 
     setupPanelDialog('scenario-dialog', 'btn-open-scenarios', 'scenario-dialog-close');
     setupPanelDialog('xml-upload-dialog', 'btn-open-xml-upload', 'xml-upload-dialog-close');
