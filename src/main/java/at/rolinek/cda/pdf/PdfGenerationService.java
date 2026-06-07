@@ -18,37 +18,61 @@ import org.springframework.web.server.ResponseStatusException;
 import java.awt.*;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Method;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
-import java.util.stream.Stream;
+import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * Converts CDA XML to PDF by calling the ELGA CDA2PDF library in-process.
+ *
+ * <p>The ELGA jars are not on the application's compile classpath (they are mounted at
+ * runtime), so the converter classes are loaded lazily through a dedicated
+ * {@link URLClassLoader} over the jars in {@code elgaLibDir} and invoked via reflection.
+ *
+ * <p>The converter resolves its XSL stylesheet from resources bundled inside the jars
+ * (the {@code templates/} and {@code RootTemplateDefault.xsl} tree in CDA2PDF-API.jar);
+ * the {@code <?xml-stylesheet?>} processing instruction in the input XML is ignored, so
+ * no stylesheet file copying or PI rewriting is required.
+ *
+ * <p>The ELGA converter is NOT thread-safe (concurrent conversions corrupt shared static
+ * XSLT-compiler state and return null), so all conversions are serialised through a single
+ * lock. Throughput limits are handled separately upstream.
+ */
 @Service
 public class PdfGenerationService {
     private static final Logger LOG = LoggerFactory.getLogger(PdfGenerationService.class);
+
     private static final String[] ELGA_REQUIRED_JARS = {
         "CDA2PDF-Demo.jar",
         "CDA2PDF-API.jar",
         "CDA2PDF-DEPS.jar"
     };
-    private static final String WRAPPER_CLASS = "CDA2PDFUebung";
-    private static final String CLEAN_WRAPPER_CLASS = "CDA2PDFClean";
-    private static final String STYLESHEET_FILENAME = "ELGA_Stylesheet_v1.0.xsl";
+    private static final String BUILDER_CLASS = "at.gv.elga.cda2pdflib.addon.CDA2PDFBuilder";
+    private static final String CONVERTER_CLASS = "at.gv.elga.cda2pdflib.CDA2PDFConverter";
+
+    private static final String UEBUNG_AUTH_USER = "Übungs-Generator";
+    private static final String UEBUNG_BANNER_TEXT = "ÜBUNGSDOKUMENT — NUR FÜR TRAININGS!";
+    private static final String CLEAN_AUTH_USER = "CDA-Konverter";
 
     private final Path elgaLibDir;
-    private final Path elgaWrapperDir;
-    private final Path stylesheetPath;
     private final String watermarkText;
     private final float watermarkOpacity;
     private final XmlSafetyGuard xmlSafetyGuard;
 
+    /** Serialises conversions: the ELGA converter holds non-thread-safe static state. */
+    private final ReentrantLock conversionLock = new ReentrantLock();
+
+    /** Lazily initialised, cached reflection handles for the ELGA converter. */
+    private volatile ElgaConverter elgaConverter;
+
     public PdfGenerationService(AppProperties properties, XmlSafetyGuard xmlSafetyGuard) {
         this.elgaLibDir = Path.of(properties.getElgaLibDir()).toAbsolutePath().normalize();
-        this.elgaWrapperDir = Path.of(properties.getElgaWrapperDir()).toAbsolutePath().normalize();
-        this.stylesheetPath = Path.of(properties.getElgaStylesheetPath()).toAbsolutePath().normalize();
         this.watermarkText = properties.getWatermarkText();
         this.watermarkOpacity = properties.getWatermarkOpacity();
         this.xmlSafetyGuard = xmlSafetyGuard;
@@ -57,7 +81,7 @@ public class PdfGenerationService {
     public byte[] generatePdf(String xmlContent) {
         xmlSafetyGuard.requireSafe(xmlContent);
         try {
-            byte[] pdf = convertWithElgaWrapper(xmlContent, WRAPPER_CLASS);
+            byte[] pdf = convert(xmlContent, Variant.UEBUNG);
             return applyWatermark(pdf);
         } catch (ResponseStatusException ex) {
             throw ex;
@@ -69,13 +93,8 @@ public class PdfGenerationService {
 
     public byte[] generatePdfClean(String xmlContent) {
         xmlSafetyGuard.requireSafe(xmlContent);
-        if (!Files.exists(elgaWrapperDir.resolve(CLEAN_WRAPPER_CLASS + ".class"))) {
-            LOG.warn("Sauberer PDF-Konverter nicht bereit (Kompilierung ausstehend): {}", elgaWrapperDir);
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                "PDF-Konverter ist derzeit nicht verfügbar.");
-        }
         try {
-            return convertWithElgaWrapper(xmlContent, CLEAN_WRAPPER_CLASS);
+            return convert(xmlContent, Variant.CLEAN);
         } catch (ResponseStatusException ex) {
             throw ex;
         } catch (Exception ex) {
@@ -84,95 +103,118 @@ public class PdfGenerationService {
         }
     }
 
-    private byte[] convertWithElgaWrapper(String xmlContent, String wrapperClass) throws Exception {
-        ensureConverterFiles();
+    private enum Variant { UEBUNG, CLEAN }
 
-        Path tempDir = Files.createTempDirectory("cda2pdf-");
+    private byte[] convert(String xmlContent, Variant variant) throws Exception {
+        ElgaConverter converter = getElgaConverter();
+        byte[] xmlBytes = xmlContent.getBytes(StandardCharsets.UTF_8);
+
+        conversionLock.lock();
         try {
-            Path inputXml = tempDir.resolve("input.xml");
-            Path outputPdf = tempDir.resolve("output.pdf");
-            Path localXsl = tempDir.resolve(STYLESHEET_FILENAME);
-
-            Files.copy(stylesheetPath, localXsl);
-            Files.writeString(inputXml, ensureStylesheetPi(xmlContent), StandardCharsets.UTF_8);
-
-            String classpath = buildClasspath();
-            ProcessBuilder processBuilder = new ProcessBuilder(
-                "java",
-                "-cp",
-                classpath,
-                wrapperClass,
-                inputXml.toString(),
-                tempDir + File.separator,
-                outputPdf.getFileName().toString()
-            );
-            processBuilder.directory(elgaWrapperDir.toFile());
-            processBuilder.redirectErrorStream(true);
-
-            Process process = processBuilder.start();
-            String output;
-            try (var in = process.getInputStream()) {
-                output = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-            }
-
-            int exit = process.waitFor();
-            if (exit != 0 || !Files.exists(outputPdf)) {
-                LOG.error("ELGA-Konvertierung fehlgeschlagen (exit={}): {}", exit, output.isBlank() ? "(keine Ausgabe)" : output.trim());
+            byte[] pdf = converter.convert(xmlBytes, variant);
+            if (pdf == null || pdf.length == 0) {
+                LOG.error("ELGA-Konvertierung lieferte kein PDF (Variante {})", variant);
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PDF-Erstellung fehlgeschlagen.");
             }
-            return Files.readAllBytes(outputPdf);
+            return pdf;
         } finally {
-            deleteRecursively(tempDir);
+            conversionLock.unlock();
         }
     }
 
-    private String ensureStylesheetPi(String xmlContent) {
-        if (xmlContent.contains("xml-stylesheet")) {
-            return xmlContent.replaceAll(
-                "<\\?xml-stylesheet\\s+type\\s*=\\s*\"text/xsl\"\\s+href\\s*=\\s*\"[^\"]*\"\\s*\\?>",
-                "<?xml-stylesheet type=\"text/xsl\" href=\"" + STYLESHEET_FILENAME + "\"?>"
-            );
-        }
-        String declaration = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
-        String pi = "<?xml-stylesheet type=\"text/xsl\" href=\"" + STYLESHEET_FILENAME + "\"?>";
-        if (xmlContent.startsWith(declaration)) {
-            return xmlContent.replaceFirst(
-                "<\\?xml\\s+version=\"1\\.0\"\\s+encoding=\"UTF-8\"\\s*\\?>",
-                declaration + "\n" + pi
-            );
-        }
-        return declaration + "\n" + pi + "\n" + xmlContent;
-    }
-
-    private String buildClasspath() {
-        String separator = File.pathSeparator;
-        StringBuilder cp = new StringBuilder(".");
-        for (String jar : ELGA_REQUIRED_JARS) {
-            cp.append(separator).append(elgaLibDir.resolve(jar));
-        }
-        return cp.toString();
-    }
-
-    private void ensureConverterFiles() {
-        if (!Files.isDirectory(elgaLibDir)) {
-            LOG.error("ELGA-Library-Verzeichnis fehlt: {}", elgaLibDir);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "PDF-Konverter ist derzeit nicht verfügbar.");
-        }
-        for (String jar : ELGA_REQUIRED_JARS) {
-            Path jarPath = elgaLibDir.resolve(jar);
-            if (!Files.exists(jarPath)) {
-                LOG.error("ELGA-Library fehlt: {}", jarPath);
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "PDF-Konverter ist derzeit nicht verfügbar.");
+    /** Builds and caches the reflection handles on first use (double-checked locking). */
+    private ElgaConverter getElgaConverter() {
+        ElgaConverter local = elgaConverter;
+        if (local == null) {
+            synchronized (this) {
+                local = elgaConverter;
+                if (local == null) {
+                    local = createElgaConverter();
+                    elgaConverter = local;
+                }
             }
         }
+        return local;
+    }
 
-        if (!Files.exists(elgaWrapperDir.resolve("CDA2PDFUebung.class"))) {
-            LOG.error("Wrapper-Klasse nicht gefunden: {}", elgaWrapperDir.resolve("CDA2PDFUebung.class"));
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "PDF-Konverter ist derzeit nicht verfügbar.");
+    private ElgaConverter createElgaConverter() {
+        if (!Files.isDirectory(elgaLibDir)) {
+            LOG.error("ELGA-Library-Verzeichnis fehlt: {}", elgaLibDir);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                "PDF-Konverter ist derzeit nicht verfügbar.");
         }
-        if (!Files.exists(stylesheetPath)) {
-            LOG.error("Stylesheet fehlt: {}", stylesheetPath);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "PDF-Konverter ist derzeit nicht verfügbar.");
+        try {
+            URL[] urls = new URL[ELGA_REQUIRED_JARS.length];
+            for (int i = 0; i < ELGA_REQUIRED_JARS.length; i++) {
+                Path jarPath = elgaLibDir.resolve(ELGA_REQUIRED_JARS[i]);
+                if (!Files.exists(jarPath)) {
+                    LOG.error("ELGA-Library fehlt: {}", jarPath);
+                    throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "PDF-Konverter ist derzeit nicht verfügbar.");
+                }
+                urls[i] = jarPath.toUri().toURL();
+            }
+            // Parent = platform class loader to isolate the ELGA jars' bundled dependencies
+            // (FOP, Xalan, Log4j, ...) from the application classpath.
+            URLClassLoader loader = new URLClassLoader(urls, ClassLoader.getPlatformClassLoader());
+            Class<?> builderClass = Class.forName(BUILDER_CLASS, true, loader);
+            Class<?> converterClass = Class.forName(CONVERTER_CLASS, true, loader);
+            return new ElgaConverter(loader, builderClass, converterClass);
+        } catch (ResponseStatusException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            LOG.error("ELGA-Konverter konnte nicht initialisiert werden", ex);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                "PDF-Konverter ist derzeit nicht verfügbar.");
+        }
+    }
+
+    /** Holds cached reflection metadata for the ELGA converter classes. */
+    private static final class ElgaConverter {
+        private final ClassLoader loader;
+        private final java.lang.reflect.Constructor<?> builderCtor;
+        private final java.lang.reflect.Constructor<?> converterCtor;
+        private final Method setAuthUser;
+        private final Method hideDocumentInformation;
+        private final Method setBannerText;
+        private final Method enableFullDocument;
+        private final Method xmlToPdfPerXsl;
+
+        ElgaConverter(ClassLoader loader, Class<?> builderClass, Class<?> converterClass) throws Exception {
+            this.loader = loader;
+            this.builderCtor = builderClass.getDeclaredConstructor();
+            this.converterCtor = converterClass.getConstructor(builderClass);
+            this.setAuthUser = builderClass.getMethod("setAuthUser", String.class);
+            this.hideDocumentInformation = builderClass.getMethod("hideDocumentInformation");
+            this.setBannerText = builderClass.getMethod("setBannerText", String.class);
+            this.enableFullDocument = builderClass.getMethod("enableFullDocument");
+            this.xmlToPdfPerXsl = converterClass.getMethod("xmlToPdfPerXsl", InputStream.class);
+        }
+
+        /** Performs a single conversion. Must be called while holding the conversion lock. */
+        byte[] convert(byte[] xmlBytes, Variant variant) throws Exception {
+            ClassLoader previous = Thread.currentThread().getContextClassLoader();
+            Thread.currentThread().setContextClassLoader(loader);
+            try {
+                Object builder = builderCtor.newInstance();
+                if (variant == Variant.UEBUNG) {
+                    setAuthUser.invoke(builder, UEBUNG_AUTH_USER);
+                    // enableFullDocument() bewusst NICHT aufrufen → "normale" (kürzere) Variante
+                    hideDocumentInformation.invoke(builder);
+                    setBannerText.invoke(builder, UEBUNG_BANNER_TEXT);
+                } else {
+                    setAuthUser.invoke(builder, CLEAN_AUTH_USER);
+                    enableFullDocument.invoke(builder);
+                }
+                Object converter = converterCtor.newInstance(builder);
+                Object result = xmlToPdfPerXsl.invoke(converter, new ByteArrayInputStream(xmlBytes));
+                if (result == null) {
+                    return null;
+                }
+                return ((ByteArrayOutputStream) result).toByteArray();
+            } finally {
+                Thread.currentThread().setContextClassLoader(previous);
+            }
         }
     }
 
@@ -208,23 +250,6 @@ public class PdfGenerationService {
             }
             document.save(out);
             return out.toByteArray();
-        }
-    }
-
-    private static void deleteRecursively(Path path) {
-        if (path == null || !Files.exists(path)) {
-            return;
-        }
-        try (Stream<Path> stream = Files.walk(path)) {
-            stream.sorted(Comparator.reverseOrder()).forEach(p -> {
-                try {
-                    Files.deleteIfExists(p);
-                } catch (IOException ignored) {
-                    // temp clean-up best-effort
-                }
-            });
-        } catch (IOException ignored) {
-            // temp clean-up best-effort
         }
     }
 }
