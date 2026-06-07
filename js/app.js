@@ -345,7 +345,9 @@ function setupQuickAddDropdowns() {
                 return;
             }
             addListItem(name, selectedEntry);
-            setStatus(`Standardwert hinzugefügt: ${listItemLabel(name, selectedEntry)}`);
+            const addedMsg = `Standardwert hinzugefügt: ${listItemLabel(name, selectedEntry)}`;
+            setStatus(addedMsg);
+            notify(addedMsg, 'success');
             select.value = '';
         });
         const actionRow = document.createElement('div');
@@ -1047,6 +1049,9 @@ function setupXmlUpload() {
                 notify(errMsg, 'error');
             }
         });
+        // withButtonBusy re-enables the button in its finally; restore the
+        // file-gated disabled state (the button is only valid with a file selected).
+        btnConvert.disabled = fileInput.files.length === 0;
     });
 }
 
