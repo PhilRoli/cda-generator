@@ -9,7 +9,7 @@ services:
             APP_ELGA_LIB_DIR: /app/elga-lib
             APP_ELGA_WRAPPER_DIR: /app/scripts/cda2pdf-uebung
             APP_ELGA_STYLESHEET_PATH: /app/assets/elga-stylesheet-uebung.xsl
-            APP_WATERMARK_TEXT: ${APP_WATERMARK_TEXT:-\u00DCBUNGSDOKUMENT}
+            APP_WATERMARK_TEXT: ${APP_WATERMARK_TEXT:-ÜBUNGSDOKUMENT}
             APP_WATERMARK_OPACITY: ${APP_WATERMARK_OPACITY:-0.17}
             APP_ADMIN_TOKEN: ${APP_ADMIN_TOKEN:-}
             APP_CLEAN_PDF_PASSWORD: ${APP_CLEAN_PDF_PASSWORD:-}

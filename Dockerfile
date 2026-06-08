@@ -7,6 +7,12 @@ RUN mvn -q -DskipTests package
 FROM eclipse-temurin:21
 WORKDIR /app
 
+# The container's default locale is POSIX/C, under which the JVM picks
+# sun.jnu.encoding=ANSI_X3.4-1968 (ASCII) and mangles non-ASCII environment
+# variables (e.g. the "Ü" in APP_WATERMARK_TEXT). Force a UTF-8 locale so env
+# values decode correctly. C.UTF-8 ships with the glibc base image.
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
+
 # Create a dedicated non-root user to run the application.
 # eclipse-temurin (Ubuntu 24.04) already uses uid/gid 1000 for its default
 # "ubuntu" user, so we let the system assign the next available id.
