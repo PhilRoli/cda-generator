@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -42,6 +43,17 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorBody> handleMaxUploadSize() {
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(new ErrorBody("Datei ist zu groß."));
+    }
+
+    /**
+     * A request for a path that maps to no controller and no bundled static resource.
+     * In production the frontend is served by the reverse proxy, so this only happens
+     * when the app port is hit directly (e.g. a probe) — a 404 is the correct answer
+     * and there is no need to log a stack trace for it.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorBody> handleNoResource() {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorBody("Nicht gefunden."));
     }
 
     @ExceptionHandler(Exception.class)

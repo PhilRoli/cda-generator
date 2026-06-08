@@ -67,6 +67,19 @@ class GlobalExceptionHandlerTest {
             .andExpect(jsonPath("$.message").value("Interner Serverfehler."));
     }
 
+    // --- NoResourceFoundException → 404 (not swallowed into a 500) ---
+
+    @Test
+    void noResourceFound_returns404WithSafeMessage() throws Exception {
+        // A path that maps to no controller falls through to the static-resource
+        // handler, which raises NoResourceFoundException — exactly what happens when
+        // the app port is hit directly (bypassing the reverse proxy). It must surface
+        // as a clean 404, not be swallowed into a 500 by the catch-all handler.
+        mvc.perform(get("/does-not-exist"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Nicht gefunden."));
+    }
+
     @Test
     void unexpectedRuntimeException_doesNotLeakRawMessage() throws Exception {
         org.mockito.BDDMockito.given(scenarioService.listAll())
