@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -78,6 +79,18 @@ class GlobalExceptionHandlerTest {
         mvc.perform(get("/does-not-exist"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.message").value("Nicht gefunden."));
+    }
+
+    // --- Wrong HTTP method → 405 (not swallowed into a 500 + "Unhandled exception" log) ---
+
+    @Test
+    void unsupportedHttpMethod_returns405WithSafeMessage() throws Exception {
+        // /api/scenarios maps GET and POST but not DELETE. A wrong method (e.g. a probe)
+        // raises HttpRequestMethodNotSupportedException — a client error that must surface
+        // as a clean 405, not be logged as an "Unhandled exception" and returned as 500.
+        mvc.perform(delete("/api/scenarios"))
+            .andExpect(status().isMethodNotAllowed())
+            .andExpect(jsonPath("$.message").value("Methode nicht erlaubt."));
     }
 
     @Test

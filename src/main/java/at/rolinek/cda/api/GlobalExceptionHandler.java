@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -54,6 +55,17 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorBody> handleNoResource() {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorBody("Nicht gefunden."));
+    }
+
+    /**
+     * A request to an existing path with an HTTP method that path does not support
+     * (e.g. a GET probe against a POST-only endpoint). Like {@link #handleNoResource()}
+     * this is a client error, not a server fault, so it returns a clean 405 without
+     * logging a stack trace as an "Unhandled exception".
+     */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorBody> handleMethodNotSupported() {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(new ErrorBody("Methode nicht erlaubt."));
     }
 
     @ExceptionHandler(Exception.class)
