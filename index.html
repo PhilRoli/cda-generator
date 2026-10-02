@@ -399,6 +399,24 @@
             </div>
         </dialog>
 
+        <dialog id="admin-token-dialog" class="panel-dialog" aria-labelledby="admin-token-title">
+            <form method="dialog">
+                <div class="panel-dialog-header">
+                    <h2 id="admin-token-title">Admin-Token</h2>
+                </div>
+                <div class="scenario-row">
+                    <label>
+                        <span class="label-text">Admin-Token</span>
+                        <input type="password" id="admin-token-input" autocomplete="off" required />
+                    </label>
+                </div>
+                <div class="scenario-row">
+                    <button class="btn" value="cancel" formnovalidate>Abbrechen</button>
+                    <button class="btn primary" value="ok">Bestätigen</button>
+                </div>
+            </form>
+        </dialog>
+
         <dialog id="changelog-dialog" class="changelog-dialog">
             <h2>Changelog</h2>
             <div class="changelog-entry">

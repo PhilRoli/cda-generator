@@ -1,871 +1,74 @@
-// UI-Logik: Form-State <-> DOM, Tabs, Listen-Items, Persistenz, Generierung.
+// Entry point: wires up the form, buttons, dialogs and the scenario manager.
 
-import { generateRandomPatient, generateRandomDoctor, isValidSvnr } from './faker.js';
+import { generateRandomPatient, generateRandomDoctor } from './faker.js';
 import { buildEntlassungsbrief } from './doctype-entlassung.js';
 import { LOGO_DATA_URI } from './logo-base64.js';
 import { HOSPITALS_BY_BUNDESLAND } from './hospitals.js';
-import { sanitizeState } from './sanitize-state.js';
-import { scenarioIdToUpdate } from './cloud-scenarios.js';
-
-// APP_VERSION is fetched from /api/version at init — see initVersionBadge()
-
-const STORAGE_KEY = 'cda-uebung:last';
-const CLOUD_USER_KEY = 'cda-uebung:cloud-username';
-const SCENARIO_SOURCE_KEY = 'cda-uebung:scenario-source';
-
-let cloudScenarios = [];
-let selectedCloudScenarioId = null;
-// The cloud scenario the current form state came from ({ id, username }), if any. Only
-// this one is ever overwritten by a save — see scenarioIdToUpdate().
-let loadedCloudScenario = null;
-
-// Sinnvolle Default-Inhalte (RD-Übungs-tauglich, leicht anpassbar)
-function defaultState() {
-    const today = new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    const isoLocal = (d) =>
-        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    const admission = new Date(today.getTime() - 4 * 86400000);
-    admission.setHours(14, 30, 0, 0);
-    const discharge = new Date(today);
-    discharge.setHours(11, 0, 0, 0);
-
-    return {
-        documentDate: isoLocal(discharge),
-        patient: {
-            givenName: 'Maria',
-            familyName: 'Gruber',
-            gender: 'F',
-            birthDate: '1948-03-12',
-            svnr: '',
-            phone: '06641234567',
-            address: {
-                street: 'Linzer Bundesstraße',
-                houseNumber: '34',
-                postalCode: '5023',
-                city: 'Salzburg',
-                country: 'A',
-            },
-        },
-        organization: {
-            name: 'Universitätsklinikum Salzburg Landeskrankenhaus',
-            phone: '+43(0)57255',
-            address: {
-                street: 'Müllner Hauptstraße',
-                houseNumber: '48',
-                postalCode: '5020',
-                city: 'Salzburg',
-                country: 'A',
-            },
-        },
-        author: { title: 'Dr.', givenName: 'Andrea', familyName: 'Hofer' },
-        encounter: {
-            admissionDate: isoLocal(admission),
-            dischargeDate: isoLocal(discharge),
-            ward: 'Unfallchirurgie, Station 3B',
-            caseId: '',
-            type: 'IMP',
-        },
-        brieftext: { text: '' },
-        aufnahmegrund:
-            'Stationäre Aufnahme nach häuslichem Sturz mit Verdacht auf Schenkelhalsfraktur links. Patientin wurde durch den Notarzt zugewiesen.',
-        diagnosen: [
-            { text: 'Mediale Schenkelhalsfraktur links' },
-            { text: 'Arterielle Hypertonie' },
-            { text: 'Diabetes mellitus Typ 2, medikamentös eingestellt' },
-        ],
-        vorerkrankungen: [
-            { text: 'Arterielle Hypertonie' },
-            { text: 'Diabetes mellitus Typ 2' },
-            { text: 'Z.n. Cholezystektomie' },
-        ],
-        anamnese:
-            'Patientin wohnt allein in Erdgeschosswohnung, ist bisher selbstständig mobil. Sturz beim Aufstehen aus dem Sessel, kein Bewusstseinsverlust, keine Synkope erinnerlich. Schmerzen unmittelbar im linken Hüftbereich, keine Belastbarkeit mehr.',
-        verlauf:
-            'Bei Aufnahme klinisch und radiologisch Bestätigung der medialen Schenkelhalsfraktur links. Indikation zur operativen Versorgung gestellt. Am Folgetag Implantation einer zementierten Hüfttotalendoprothese links in Spinalanästhesie, intraoperativer Verlauf unauffällig. Postoperativ rasche Mobilisation an zwei Unterarmstützen unter physiotherapeutischer Anleitung. Wundverhältnisse reizlos, Drainagezug am 2. postoperativen Tag.\n\nUnter Thromboseprophylaxe mit niedermolekularem Heparin keine Komplikationen. Blutzucker stabil. Vorbestehende antihypertensive Therapie unverändert fortgeführt.',
-        medikation: [
-            { medikament: 'Lovenox 40 mg s.c.', schema: '0-0-0-1' },
-            { medikament: 'Pantoloc 40 mg', schema: '1-0-0' },
-            { medikament: 'Ramipril 5 mg', schema: '1-0-0' },
-            { medikament: 'Metformin 850 mg', schema: '1-0-1' },
-            { medikament: 'Mexalen 500 mg', schema: '1-1-1-1' },
-            { medikament: 'Tramal Tropfen 20 Tr.', schema: 'b.B.' },
-        ],
-        empfehlungen:
-            'Mobilisation an zwei Unterarmstützen unter Teilbelastung links für 6 Wochen. Physiotherapie ambulant fortführen. Wundkontrolle und Fadenzug beim Hausarzt am 14. postoperativen Tag.\n\nKlinische Kontrolle in unserer orthopädischen Ambulanz in 6 Wochen mit Röntgenkontrolle.\n\nThromboseprophylaxe mit Lovenox 40mg s.c. einmal täglich für 4 Wochen.\n\nBei Fieber, zunehmenden Schmerzen, Wundsekretion oder Rötung im OP-Bereich umgehende Wiedervorstellung.',
-        allergien: [{ substanz: 'Penicillin' }, { substanz: 'Jodhaltige Kontrastmittel' }],
-        risikofaktoren: [
-            { faktor: 'Arterielle Hypertonie' },
-            { faktor: 'Adipositas' },
-            { faktor: 'Bewegungsmangel' },
-        ],
-        patientenverfuegung: {
-            status: 'beachtlich',
-            hinterlegtBei: 'Hausärztin Dr. Berger, Kopie bei Tochter',
-            datum: '2022-09-15',
-            gueltigBis: '2027-09-15',
-            bemerkung:
-                'Ablehnung intensivmedizinischer Maßnahmen bei infauster Prognose. Keine künstliche Beatmung, keine Reanimation. Schmerzlinderung erwünscht.',
-        },
-    };
-}
-
-// State + DOM-Bindings ------------------------------------------------------
-let state = loadState();
-
-function loadState() {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) return sanitizeState(JSON.parse(raw), defaultState());
-    } catch {}
-    return defaultState();
-}
-
-function saveState() {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {}
-}
-
-function getByPath(obj, path) {
-    return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
-}
-
-function setByPath(obj, path, value) {
-    const parts = path.split('.');
-    let cur = obj;
-    for (let i = 0; i < parts.length - 1; i++) {
-        if (cur[parts[i]] == null) cur[parts[i]] = {};
-        cur = cur[parts[i]];
-    }
-    cur[parts[parts.length - 1]] = value;
-}
-
-function bindInputs() {
-    document.querySelectorAll('[data-bind]').forEach((el) => {
-        const path = el.getAttribute('data-bind');
-        const v = getByPath(state, path);
-        if (v !== undefined) el.value = v;
-        el.addEventListener('input', () => {
-            setByPath(state, path, el.value);
-            saveState();
-        });
-    });
-}
-
-// Listen-Items (Diagnosen, Vorerkrankungen, Medikation) ---------------------
-const LIST_TEMPLATES = {
-    diagnosen: {
-        fields: [{ key: 'text', label: 'Diagnose', type: 'text' }],
-        grid: 'grid-single',
-        empty: { text: '' },
-    },
-    vorerkrankungen: {
-        fields: [{ key: 'text', label: 'Vorerkrankung', type: 'text' }],
-        grid: 'grid-single',
-        empty: { text: '' },
-    },
-    medikation: {
-        fields: [
-            { key: 'medikament', label: 'Medikament', type: 'text' },
-            { key: 'schema', label: 'Schema', type: 'text' },
-        ],
-        grid: 'grid-medi',
-        empty: { medikament: '', schema: '' },
-    },
-    allergien: {
-        fields: [{ key: 'substanz', label: 'Allergie / Substanz', type: 'text' }],
-        grid: 'grid-single',
-        empty: { substanz: '' },
-    },
-    risikofaktoren: {
-        fields: [{ key: 'faktor', label: 'Risikofaktor', type: 'text' }],
-        grid: 'grid-single',
-        empty: { faktor: '' },
-    },
-};
-
-const QUICK_ADD_OPTIONS = {
-    diagnosen: [
-        { text: 'Arterielle Hypertonie' },
-        { text: 'Diabetes mellitus Typ 2' },
-        { text: 'COPD' },
-        { text: 'Pneumonie, ambulant erworben' },
-        { text: 'Harnwegsinfekt' },
-        { text: 'Herzinsuffizienz' },
-    ],
-    vorerkrankungen: [
-        { text: 'Arterielle Hypertonie' },
-        { text: 'Diabetes mellitus Typ 2' },
-        { text: 'Koronare Herzkrankheit' },
-        { text: 'COPD' },
-        { text: 'Vorhofflimmern' },
-        { text: 'Chronische Niereninsuffizienz' },
-    ],
-    allergien: [
-        { substanz: 'Penicillin' },
-        { substanz: 'Jodhaltige Kontrastmittel' },
-        { substanz: 'Latex' },
-        { substanz: 'ASS (Acetylsalicylsäure)' },
-        { substanz: 'Nüsse' },
-        { substanz: 'Pollen' },
-    ],
-    risikofaktoren: [
-        { faktor: 'Nikotinabusus' },
-        { faktor: 'Alkoholkonsum' },
-        { faktor: 'Adipositas' },
-        { faktor: 'Bewegungsmangel' },
-        { faktor: 'Diabetes mellitus' },
-        { faktor: 'Positive kardiovaskuläre Familienanamnese' },
-    ],
-    medikation: [
-        { medikament: 'Ramipril 5 mg', schema: '1-0-0' },
-        { medikament: 'Bisoprolol 5 mg', schema: '1-0-0' },
-        { medikament: 'Metformin 850 mg', schema: '1-0-1' },
-        { medikament: 'Pantoprazol 40 mg', schema: '1-0-0' },
-        { medikament: 'ASS 100 mg', schema: '1-0-0' },
-        { medikament: 'Atorvastatin 20 mg', schema: '0-0-1' },
-    ],
-};
-
-const QUICK_ADD_PLACEHOLDERS = {
-    diagnosen: 'Häufige Diagnose auswählen …',
-    vorerkrankungen: 'Häufige Vorerkrankung auswählen …',
-    allergien: 'Häufige Allergie auswählen …',
-    risikofaktoren: 'Häufigen Risikofaktor auswählen …',
-    medikation: 'Häufiges Medikament auswählen …',
-};
-
-function listItemLabel(name, item) {
-    if (name === 'medikation') return `${item.medikament} (${item.schema || '-'})`;
-    const firstField = LIST_TEMPLATES[name]?.fields?.[0]?.key;
-    return firstField ? item[firstField] || '' : '';
-}
-
-function hasSameListItem(name, candidate) {
-    const fields = (LIST_TEMPLATES[name]?.fields || []).map((f) => f.key);
-    if (!fields.length) return false;
-    const normalize = (v) => String(v ?? '').trim().toLowerCase();
-    return (state[name] || []).some((entry) => fields.every((key) => normalize(entry[key]) === normalize(candidate[key])));
-}
-
-function addListItem(name, item) {
-    const tpl = LIST_TEMPLATES[name];
-    if (!tpl) return;
-    if (!state[name]) state[name] = [];
-    state[name].push({ ...item });
-    saveState();
-    renderList(name);
-}
-
-function renderList(name) {
-    const tpl = LIST_TEMPLATES[name];
-    const container = document.getElementById(`${name}-list`);
-    if (!container || !tpl) return;
-    container.innerHTML = '';
-    const items = state[name] || [];
-    items.forEach((item, idx) => {
-        const row = document.createElement('div');
-        row.className = tpl.grid + (idx === 0 ? ' row-with-header' : '');
-        tpl.fields.forEach((f) => {
-            const lbl = document.createElement('label');
-            const span = document.createElement('span');
-            span.className = 'label-text';
-            span.textContent = f.label;
-            lbl.appendChild(span);
-            const input = document.createElement('input');
-            input.type = f.type;
-            input.value = item[f.key] ?? '';
-            input.addEventListener('input', () => {
-                item[f.key] = input.value;
-                saveState();
-            });
-            lbl.appendChild(input);
-            row.appendChild(lbl);
-        });
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'btn icon danger';
-        removeBtn.title = 'Entfernen';
-        removeBtn.textContent = '✕';
-        removeBtn.addEventListener('click', () => {
-            state[name].splice(idx, 1);
-            saveState();
-            renderList(name);
-        });
-        if (idx === 0) {
-            // Header-Spacer
-            const lbl = document.createElement('label');
-            const span = document.createElement('span');
-            span.className = 'label-text';
-            span.innerHTML = '&nbsp;';
-            lbl.appendChild(span);
-            lbl.appendChild(removeBtn);
-            row.appendChild(lbl);
-        } else {
-            row.appendChild(removeBtn);
-        }
-        container.appendChild(row);
-    });
-}
-
-function setupListAddButtons() {
-    document.querySelectorAll('[data-add]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const name = btn.getAttribute('data-add');
-            const tpl = LIST_TEMPLATES[name];
-            if (!tpl) return;
-            addListItem(name, tpl.empty);
-        });
-    });
-}
-
-function setupQuickAddDropdowns() {
-    document.querySelectorAll('[data-add]').forEach((btn) => {
-        const name = btn.getAttribute('data-add');
-        const options = QUICK_ADD_OPTIONS[name];
-        if (!options?.length) return;
-
-        const select = document.createElement('select');
-        select.className = 'quick-add-select';
-        const placeholder = document.createElement('option');
-        placeholder.value = '';
-        placeholder.textContent = QUICK_ADD_PLACEHOLDERS[name] || 'Standardwert auswählen …';
-        select.appendChild(placeholder);
-        options.forEach((entry, idx) => {
-            const option = document.createElement('option');
-            option.value = String(idx);
-            option.textContent = listItemLabel(name, entry);
-            select.appendChild(option);
-        });
-        select.addEventListener('change', () => {
-            const idx = Number(select.value);
-            if (Number.isNaN(idx) || !options[idx]) return;
-            const selectedEntry = options[idx];
-            if (hasSameListItem(name, selectedEntry)) {
-                const msg = `Eintrag bereits vorhanden: ${listItemLabel(name, selectedEntry)}`;
-                setStatus(msg);
-                notify(msg, 'info');
-                select.value = '';
-                return;
-            }
-            addListItem(name, selectedEntry);
-            const addedMsg = `Standardwert hinzugefügt: ${listItemLabel(name, selectedEntry)}`;
-            setStatus(addedMsg);
-            notify(addedMsg, 'success');
-            select.value = '';
-        });
-        const actionRow = document.createElement('div');
-        actionRow.className = 'quick-add-actions';
-        btn.insertAdjacentElement('beforebegin', actionRow);
-        actionRow.appendChild(select);
-        actionRow.appendChild(btn);
-    });
-}
-
-// SVNR validation -----------------------------------------------------------
-
-/** Returns true when the SVNR is acceptable for generation: empty OR structurally valid. */
-function svnrIsAcceptable(svnr) {
-    return !svnr || isValidSvnr(svnr);
-}
-
-function updateSvnrMarking() {
-    const input = document.querySelector('[data-bind="patient.svnr"]');
-    if (!input) return;
-    const svnr = input.value;
-    const invalid = svnr && !isValidSvnr(svnr);
-    input.classList.toggle('invalid', !!invalid);
-    let hint = input.parentElement?.querySelector('.svnr-hint');
-    if (invalid) {
-        if (!hint) {
-            hint = document.createElement('span');
-            hint.className = 'svnr-hint';
-            hint.textContent = '10-stellig mit gültiger Prüfziffer erforderlich';
-            input.insertAdjacentElement('afterend', hint);
-        }
-    } else if (hint) {
-        hint.remove();
-    }
-}
-
-function setupSvnrValidation() {
-    const input = document.querySelector('[data-bind="patient.svnr"]');
-    if (!input) return;
-    input.addEventListener('input', updateSvnrMarking);
-    input.addEventListener('blur', updateSvnrMarking);
-    updateSvnrMarking();
-}
-
-// Buttons -------------------------------------------------------------------
-function setStatus(msg) {
-    document.getElementById('status').textContent = msg || '';
-}
-
-// Toast notifications -------------------------------------------------------
-const TOAST_AUTO_DISMISS_MS = { success: 4000, info: 5000, error: null /* sticky */ };
+import { getState, replaceState, saveState, defaultState } from './state.js';
+import { renderAllLists, setupListAddButtons, setupQuickAddDropdowns } from './lists.js';
+import { bindInputs, rebindAll, setupPvVisibility, setupSvnrValidation, svnrIsAcceptable, updateSvnrMarking } from './form.js';
+import { setupScenarioManager } from './scenario-manager.js';
+import { apiJson, apiPdf } from './api.js';
+import { downloadFile, downloadBlob } from './download.js';
+import { report, withButtonBusy } from './ui-feedback.js';
 
 /**
- * Show a toast notification.
- * @param {string} message
- * @param {'success'|'error'|'info'} type
+ * Checks the SVNR and builds the CDA document. Returns { xml, xmlFilename }, or null
+ * (after pointing the user at the SVNR field) when the SVNR is invalid.
  */
-function notify(message, type = 'info') {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    // Errors use role="alert" for immediate ARIA announcement; others use the
-    // container's aria-live="polite" region.
-    if (type === 'error') toast.setAttribute('role', 'alert');
-
-    const msgSpan = document.createElement('span');
-    msgSpan.className = 'toast-msg';
-    msgSpan.textContent = message;
-    toast.appendChild(msgSpan);
-
-    const dismissBtn = document.createElement('button');
-    dismissBtn.className = 'toast-dismiss';
-    dismissBtn.setAttribute('aria-label', 'Schließen');
-    dismissBtn.textContent = '✕';
-    dismissBtn.addEventListener('click', () => removeToast(toast));
-    toast.appendChild(dismissBtn);
-
-    container.appendChild(toast);
-
-    const autoMs = TOAST_AUTO_DISMISS_MS[type];
-    if (autoMs != null) {
-        setTimeout(() => removeToast(toast), autoMs);
+function validateAndBuild() {
+    const state = getState();
+    if (!svnrIsAcceptable(state.patient.svnr)) {
+        report('Ungültige SVNR — bitte korrigieren (10-stellig mit gültiger Prüfziffer).', 'error');
+        document.querySelector('[data-bind="patient.svnr"]')?.focus();
+        updateSvnrMarking();
+        return null;
     }
-}
-
-function removeToast(toast) {
-    if (!toast.isConnected) return;
-    toast.classList.add('toast-leaving');
-    toast.addEventListener('animationend', () => toast.remove(), { once: true });
-}
-
-// Button busy helper --------------------------------------------------------
-/**
- * Disables `button`, shows a spinner + `busyLabel` while `asyncFn` runs,
- * then always restores the button state.
- * @param {HTMLButtonElement} button
- * @param {string} busyLabel  Text shown next to the spinner during the operation.
- * @param {() => Promise<*>} asyncFn
- * @returns {Promise<*>}  Resolves/rejects with the return value of asyncFn.
- */
-async function withButtonBusy(button, busyLabel, asyncFn) {
-    const originalHTML = button.innerHTML;
-    // Capture the current rendered width so the button doesn't collapse
-    button.style.setProperty('--btn-stable-width', button.offsetWidth + 'px');
-    button.classList.add('busy');
-    button.disabled = true;
-
-    const spinner = document.createElement('span');
-    spinner.className = 'btn-spinner';
-    button.innerHTML = '';
-    button.appendChild(spinner);
-    button.appendChild(document.createTextNode(' ' + busyLabel));
-
-    try {
-        return await asyncFn();
-    } finally {
-        button.innerHTML = originalHTML;
-        button.disabled = false;
-        button.classList.remove('busy');
-        button.style.removeProperty('--btn-stable-width');
-    }
-}
-
-function cloudScenarioTitleSuggestion() {
-    const family = (state.patient?.familyName || 'anonym').toLowerCase();
-    const date = (state.documentDate || new Date().toISOString()).slice(0, 10);
-    return `szenario-${family}-${date}`;
-}
-
-function saveLocalScenario() {
-    const filename = `szenario-${(state.patient.familyName || 'anonym').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.json`;
-    downloadFile(filename, JSON.stringify(state, null, 2), 'application/json');
-    const msg = `Lokales Szenario gespeichert: ${filename}`;
-    setStatus(msg);
-    notify(msg, 'success');
-}
-
-async function loadLocalScenarioFromFile(file) {
-    if (!file) return;
-    try {
-        const text = await file.text();
-        const loaded = JSON.parse(text);
-        state = sanitizeState(loaded, defaultState());
-        loadedCloudScenario = null;
-        saveState();
-        rebindAll();
-        const msg = `Lokales Szenario geladen: ${file.name}`;
-        setStatus(msg);
-        notify(msg, 'success');
-    } catch (err) {
-        const msg = `Fehler beim lokalen Laden: ${err.message}`;
-        setStatus(msg);
-        notify(msg, 'error');
-    }
-}
-
-async function apiRequest(url, options = {}, responseType = 'json') {
-    const response = await fetch(url, options);
-    if (!response.ok) {
-        let message = `HTTP ${response.status}`;
-        try {
-            const body = await response.json();
-            if (body?.message) message = body.message;
-        } catch {}
-        throw new Error(message);
-    }
-    if (responseType === 'blob') return response.blob();
-    if (response.status === 204) return null;
-    return response.json();
-}
-
-const apiJson = (url, options = {}) => apiRequest(url, options, 'json');
-const apiPdf  = (url, options = {}) => apiRequest(url, options, 'blob');
-
-function getCloudUsername() {
-    const input = document.getElementById('cloud-username');
-    return input?.value?.trim() || '';
-}
-
-function isShowAll() {
-    return document.getElementById('cloud-show-all')?.checked ?? false;
-}
-
-async function refreshCloudScenarios(options = {}) {
-    const { silent = false } = options;
-
-    if (isShowAll()) {
-        const list = await apiJson('/api/scenarios/all');
-        cloudScenarios = list;
-        renderCloudScenarioSelect();
-        if (!silent) {
-            const msg = `Cloud-Liste aktualisiert: ${cloudScenarios.length} Szenario(s) von allen Benutzern.`;
-            setStatus(msg);
-            notify(msg, 'success');
-        }
-        return;
-    }
-
-    const username = getCloudUsername();
-    if (!username) {
-        cloudScenarios = [];
-        renderCloudScenarioSelect();
-        if (!silent) {
-            const msg = 'Bitte zuerst einen Benutzernamen für Cloud-Szenarien eingeben.';
-            setStatus(msg);
-            notify(msg, 'info');
-        }
-        return;
-    }
-    const list = await apiJson(`/api/scenarios?username=${encodeURIComponent(username)}`);
-    cloudScenarios = list;
-    renderCloudScenarioSelect();
-    if (!silent) {
-        const msg = `Cloud-Liste aktualisiert: ${cloudScenarios.length} Szenario(s).`;
-        setStatus(msg);
-        notify(msg, 'success');
-    }
-}
-
-function renderCloudScenarioSelect() {
-    const select = document.getElementById('cloud-scenario-select');
-    if (!select) return;
-    const keepId = selectedCloudScenarioId;
-    const showAll = isShowAll();
-    select.innerHTML = '';
-
-    if (!cloudScenarios.length) {
-        const option = document.createElement('option');
-        option.value = '';
-        option.textContent = 'Keine Cloud-Szenarien vorhanden';
-        select.appendChild(option);
-        selectedCloudScenarioId = null;
-        return;
-    }
-
-    cloudScenarios.forEach((scenario) => {
-        const option = document.createElement('option');
-        option.value = scenario.id;
-        const prefix = showAll ? `[${scenario.username}] ` : '';
-        option.textContent = `${prefix}${scenario.title} · ${scenario.updatedAt}`;
-        if (keepId && keepId === scenario.id) option.selected = true;
-        select.appendChild(option);
-    });
-
-    selectedCloudScenarioId = select.value || cloudScenarios[0].id;
-    if (selectedCloudScenarioId) select.value = selectedCloudScenarioId;
-}
-
-async function saveCloudScenario({ asNew = false } = {}) {
-    const username = getCloudUsername();
-    if (!username) {
-        const msg = 'Bitte zuerst einen Benutzernamen für Cloud-Speicherung eingeben.';
-        setStatus(msg);
-        notify(msg, 'info');
-        return;
-    }
-
-    const defaultTitle = cloudScenarioTitleSuggestion();
-    const title = prompt('Titel für das Cloud-Szenario:', defaultTitle);
-    if (title === null) return;
-
-    const id = scenarioIdToUpdate(loadedCloudScenario, username, { asNew });
-    const payload = {
-        id,
-        username,
-        title: title.trim() || defaultTitle,
-        state,
-    };
-
-    const saved = await apiJson('/api/scenarios', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-    });
-
-    selectedCloudScenarioId = saved.id;
-    loadedCloudScenario = { id: saved.id, username: saved.username };
-    await refreshCloudScenarios({ silent: true });
-    const savedMsg = id
-        ? `Cloud-Szenario aktualisiert: ${saved.title}`
-        : `Neues Cloud-Szenario gespeichert: ${saved.title}`;
-    setStatus(savedMsg);
-    notify(savedMsg, 'success');
-}
-
-async function loadCloudScenario() {
-    if (!selectedCloudScenarioId) {
-        const msg = 'Bitte zuerst ein Cloud-Szenario auswählen.';
-        setStatus(msg);
-        notify(msg, 'info');
-        return;
-    }
-
-    let url;
-    if (isShowAll()) {
-        url = `/api/scenarios/${encodeURIComponent(selectedCloudScenarioId)}`;
-    } else {
-        const username = getCloudUsername();
-        if (!username) {
-            const msg = 'Bitte zuerst einen Benutzernamen eingeben.';
-            setStatus(msg);
-            notify(msg, 'info');
-            return;
-        }
-        url = `/api/scenarios/${encodeURIComponent(selectedCloudScenarioId)}?username=${encodeURIComponent(username)}`;
-    }
-
-    const detail = await apiJson(url);
-    state = sanitizeState(detail.state, defaultState());
-    loadedCloudScenario = { id: detail.id, username: detail.username };
-    saveState();
-    rebindAll();
-    const loadMsg = `Cloud-Szenario geladen: ${detail.title}`;
-    setStatus(loadMsg);
-    notify(loadMsg, 'success');
-}
-
-async function deleteCloudScenarioAsAdmin() {
-    if (!selectedCloudScenarioId) {
-        const msg = 'Bitte zuerst ein Cloud-Szenario auswählen.';
-        setStatus(msg);
-        notify(msg, 'info');
-        return;
-    }
-    const token = prompt('Admin-Token eingeben:');
-    if (token === null) return;
-    const trimmedToken = token.trim();
-    if (!trimmedToken) {
-        const msg = 'Bitte Admin-Token eingeben.';
-        setStatus(msg);
-        notify(msg, 'info');
-        return;
-    }
-    if (!confirm('Ausgewähltes Cloud-Szenario als Admin löschen?')) return;
-
-    await apiJson(`/api/admin/scenarios/${encodeURIComponent(selectedCloudScenarioId)}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${trimmedToken}` },
-    });
-    if (loadedCloudScenario?.id === selectedCloudScenarioId) loadedCloudScenario = null;
-    selectedCloudScenarioId = null;
-    await refreshCloudScenarios();
-    const deleteMsg = 'Cloud-Szenario per Admin-Recht gelöscht.';
-    setStatus(deleteMsg);
-    notify(deleteMsg, 'success');
-}
-
-function updateScenarioSourceVisibility() {
-    const sourceSelect = document.getElementById('scenario-source');
-    const cloudUsernameWrap = document.getElementById('cloud-username-wrap');
-    const localActions = document.getElementById('scenario-local-actions');
-    const cloudActions = document.getElementById('scenario-cloud-actions');
-    const isCloud = sourceSelect.value === 'cloud';
-
-    cloudUsernameWrap.classList.toggle('hidden', !isCloud);
-    localActions.classList.toggle('hidden', isCloud);
-    cloudActions.classList.toggle('hidden', !isCloud);
-}
-
-function setupScenarioManager() {
-    const sourceSelect = document.getElementById('scenario-source');
-    const usernameInput = document.getElementById('cloud-username');
-    const localSaveBtn = document.getElementById('btn-local-save');
-    const localLoadBtn = document.getElementById('btn-local-load');
-    const select = document.getElementById('cloud-scenario-select');
-    const fileInput = document.getElementById('file-load');
-
-    sourceSelect.value = localStorage.getItem(SCENARIO_SOURCE_KEY) || 'local';
-    usernameInput.value = localStorage.getItem(CLOUD_USER_KEY) || '';
-
-    sourceSelect.addEventListener('change', () => {
-        localStorage.setItem(SCENARIO_SOURCE_KEY, sourceSelect.value);
-        updateScenarioSourceVisibility();
-        if (sourceSelect.value === 'cloud') {
-            refreshCloudScenarios({ silent: true }).catch(() => {
-                renderCloudScenarioSelect();
-            });
-        }
-    });
-    usernameInput.addEventListener('input', () => localStorage.setItem(CLOUD_USER_KEY, usernameInput.value.trim()));
-    select.addEventListener('change', () => {
-        selectedCloudScenarioId = select.value || null;
-    });
-    document.getElementById('cloud-show-all').addEventListener('change', async () => {
-        try {
-            await refreshCloudScenarios({ silent: false });
-        } catch (err) {
-            const msg = `Cloud-Refresh fehlgeschlagen: ${err.message}`;
-            setStatus(msg);
-            notify(msg, 'error');
-        }
-    });
-    localSaveBtn.addEventListener('click', saveLocalScenario);
-    localLoadBtn.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        await loadLocalScenarioFromFile(file);
-        fileInput.value = '';
-    });
-
-    document.getElementById('btn-cloud-refresh').addEventListener('click', async () => {
-        try {
-            await refreshCloudScenarios();
-        } catch (err) {
-            const msg = `Cloud-Refresh fehlgeschlagen: ${err.message}`;
-            setStatus(msg);
-            notify(msg, 'error');
-        }
-    });
-    const onCloudSave = (options) => async () => {
-        try {
-            await saveCloudScenario(options);
-        } catch (err) {
-            const msg = `Cloud-Speicherung fehlgeschlagen: ${err.message}`;
-            setStatus(msg);
-            notify(msg, 'error');
-        }
-    };
-    document.getElementById('btn-cloud-save').addEventListener('click', onCloudSave());
-    document.getElementById('btn-cloud-save-new').addEventListener('click', onCloudSave({ asNew: true }));
-    document.getElementById('btn-cloud-load').addEventListener('click', async () => {
-        try {
-            await loadCloudScenario();
-        } catch (err) {
-            const msg = `Cloud-Laden fehlgeschlagen: ${err.message}`;
-            setStatus(msg);
-            notify(msg, 'error');
-        }
-    });
-    document.getElementById('btn-cloud-delete-admin').addEventListener('click', async () => {
-        try {
-            await deleteCloudScenarioAsAdmin();
-        } catch (err) {
-            const msg = `Admin-Löschen fehlgeschlagen: ${err.message}`;
-            setStatus(msg);
-            notify(msg, 'error');
-        }
-    });
-
-    updateScenarioSourceVisibility();
-    if (sourceSelect.value === 'cloud') {
-        refreshCloudScenarios({ silent: true }).catch(() => {
-            renderCloudScenarioSelect();
-        });
-    } else {
-        renderCloudScenarioSelect();
-    }
+    const family = (state.patient.familyName || 'anonym').toLowerCase();
+    const xmlFilename = `entlassungsbrief-${family}-${(state.documentDate || '').slice(0, 10)}.xml`;
+    return { xml: buildEntlassungsbrief(state), xmlFilename };
 }
 
 function setupButtons() {
     document.getElementById('btn-faker').addEventListener('click', () => {
         const bl = document.getElementById('global-bundesland')?.value || null;
+        const state = getState();
         state.patient = generateRandomPatient(bl);
         saveState();
         rebindAll();
-        const msg = `Stammdaten generiert: ${state.patient.givenName} ${state.patient.familyName}, SVNR ${state.patient.svnr}`;
-        setStatus(msg);
-        notify(msg, 'success');
+        report(`Stammdaten generiert: ${state.patient.givenName} ${state.patient.familyName}, SVNR ${state.patient.svnr}`, 'success');
     });
 
     document.getElementById('btn-faker-doctor').addEventListener('click', () => {
+        const state = getState();
         state.author = generateRandomDoctor();
         saveState();
         rebindAll();
-        const msg = `Arzt generiert: ${state.author.title} ${state.author.givenName} ${state.author.familyName}`;
-        setStatus(msg);
-        notify(msg, 'success');
+        report(`Arzt generiert: ${state.author.title} ${state.author.givenName} ${state.author.familyName}`, 'success');
     });
 
     setupXmlUpload();
 
     document.getElementById('btn-reset').addEventListener('click', () => {
         if (!confirm('Formular auf Default-Werte zurücksetzen? (Aktuelle Eingaben gehen verloren)')) return;
-        state = defaultState();
-        saveState();
+        replaceState(defaultState());
         rebindAll();
-        const msg = 'Formular zurückgesetzt.';
-        setStatus(msg);
-        notify(msg, 'info');
+        report('Formular zurückgesetzt.', 'info');
     });
 
     document.getElementById('btn-generate-xml').addEventListener('click', () => {
-        if (!svnrIsAcceptable(state.patient.svnr)) {
-            const errMsg = 'Ungültige SVNR — bitte korrigieren (10-stellig mit gültiger Prüfziffer).';
-            setStatus(errMsg);
-            notify(errMsg, 'error');
-            const input = document.querySelector('[data-bind="patient.svnr"]');
-            input?.focus();
-            updateSvnrMarking();
-            return;
-        }
-        const xml = buildEntlassungsbrief(state);
-        const filename = `entlassungsbrief-${(state.patient.familyName || 'anonym').toLowerCase()}-${(state.documentDate || '').slice(0, 10)}.xml`;
+        const built = validateAndBuild();
+        if (!built) return;
+        const { xml, xmlFilename: filename } = built;
         downloadFile(filename, xml, 'application/xml');
-        const xmlMsg = `XML generiert: ${filename}`;
-        setStatus(xmlMsg);
-        notify(xmlMsg, 'success');
+        report(`XML generiert: ${filename}`, 'success');
     });
 
     const btnGenerate = document.getElementById('btn-generate');
     btnGenerate.addEventListener('click', async () => {
-        if (!svnrIsAcceptable(state.patient.svnr)) {
-            const errMsg = 'Ungültige SVNR — bitte korrigieren (10-stellig mit gültiger Prüfziffer).';
-            setStatus(errMsg);
-            notify(errMsg, 'error');
-            const input = document.querySelector('[data-bind="patient.svnr"]');
-            input?.focus();
-            updateSvnrMarking();
-            return;
-        }
-        const xml = buildEntlassungsbrief(state);
-        const xmlFilename = `entlassungsbrief-${(state.patient.familyName || 'anonym').toLowerCase()}-${(state.documentDate || '').slice(0, 10)}.xml`;
+        const built = validateAndBuild();
+        if (!built) return;
+        const { xml, xmlFilename } = built;
         const pdfFilename = xmlFilename.replace(/\.xml$/i, '.pdf');
         await withButtonBusy(btnGenerate, 'wird erstellt…', async () => {
             try {
@@ -875,63 +78,13 @@ function setupButtons() {
                     body: JSON.stringify({ xml, fileName: pdfFilename }),
                 });
                 downloadBlob(pdfFilename, pdfBlob);
-                const successMsg = `PDF generiert: ${pdfFilename}`;
-                setStatus(successMsg);
-                notify(successMsg, 'success');
+                report(`PDF generiert: ${pdfFilename}`, 'success');
             } catch (err) {
-                const errMsg = `PDF-Generierung fehlgeschlagen: ${err.message}`;
-                setStatus(errMsg);
-                notify(errMsg, 'error');
+                report(`PDF-Generierung fehlgeschlagen: ${err.message}`, 'error');
             }
         });
     });
 
-}
-
-function downloadFile(filename, content, mime) {
-    const blob = new Blob([content], { type: mime });
-    downloadBlob(filename, blob);
-}
-
-function downloadBlob(filename, blob) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-        URL.revokeObjectURL(url);
-        a.remove();
-    }, 100);
-}
-
-function rebindAll() {
-    // Re-fülle Inputs mit aktuellem State
-    document.querySelectorAll('[data-bind]').forEach((el) => {
-        const path = el.getAttribute('data-bind');
-        const v = getByPath(state, path);
-        el.value = v ?? '';
-    });
-    Object.keys(LIST_TEMPLATES).forEach(renderList);
-    updatePvVisibility();
-    updateSvnrMarking();
-}
-
-// Patientenverfügung — Felder je nach Status ein-/ausblenden
-function updatePvVisibility() {
-    const sel = document.getElementById('pv-status');
-    const details = document.getElementById('pv-details');
-    if (!sel || !details) return;
-    const hide = sel.value === 'keine' || sel.value === 'unbekannt';
-    details.classList.toggle('hidden', hide);
-}
-
-function setupPvVisibility() {
-    const sel = document.getElementById('pv-status');
-    if (!sel) return;
-    sel.addEventListener('change', updatePvVisibility);
-    updatePvVisibility();
 }
 
 function setupHospitalSelector() {
@@ -958,6 +111,7 @@ function setupHospitalSelector() {
         if (!bl || hospSelect.value === '') return;
         const h = (HOSPITALS_BY_BUNDESLAND[bl] || [])[idx];
         if (!h) return;
+        const state = getState();
         state.organization.name = h.name;
         state.organization.phone = h.phone;
         state.organization.address.street = h.street;
@@ -967,9 +121,7 @@ function setupHospitalSelector() {
         state.organization.address.country = 'A';
         saveState();
         rebindAll();
-        const hospMsg = `Krankenhaus ausgewählt: ${h.name}`;
-        setStatus(hospMsg);
-        notify(hospMsg, 'info');
+        report(`Krankenhaus ausgewählt: ${h.name}`, 'info');
     });
 }
 
@@ -994,7 +146,7 @@ async function initVersionBadge() {
 function init() {
     document.getElementById('header-logo').src = LOGO_DATA_URI;
     bindInputs();
-    Object.keys(LIST_TEMPLATES).forEach(renderList);
+    renderAllLists();
     setupListAddButtons();
     setupQuickAddDropdowns();
     setupButtons();
@@ -1053,13 +205,9 @@ function setupXmlUpload() {
                 });
                 const pdfFilename = file.name.replace(/\.xml$/i, '.pdf');
                 downloadBlob(pdfFilename, pdfBlob);
-                const successMsg = `PDF generiert: ${pdfFilename}`;
-                setStatus(successMsg);
-                notify(successMsg, 'success');
+                report(`PDF generiert: ${pdfFilename}`, 'success');
             } catch (err) {
-                const errMsg = `PDF-Generierung fehlgeschlagen: ${err.message}`;
-                setStatus(errMsg);
-                notify(errMsg, 'error');
+                report(`PDF-Generierung fehlgeschlagen: ${err.message}`, 'error');
             }
         });
         // withButtonBusy re-enables the button in its finally; restore the
