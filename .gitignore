@@ -9,3 +9,4 @@ elga-lib/
 *.db
 .idea/
 dist/
+node_modules/

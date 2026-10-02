@@ -1,5 +1,5 @@
 // Zug 5 FK Salzburg Stadt Logo as base64 PNG.
-// Source: /Users/philipp/Downloads/Logo.png (resized to max 400px via sips).
+// Resized to max 400px wide.
 // Used both for the form-UI preview and embedded into the generated CDA XML
 // as <observationMedia> in the Brieftext section, replacing the hospital logo.
 export const LOGO_MIME = 'image/png';
