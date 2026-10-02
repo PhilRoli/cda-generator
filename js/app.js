@@ -4,7 +4,8 @@ import { generateRandomPatient, generateRandomDoctor, isValidSvnr } from './fake
 import { buildEntlassungsbrief } from './doctype-entlassung.js';
 import { LOGO_DATA_URI } from './logo-base64.js';
 import { HOSPITALS_BY_BUNDESLAND } from './hospitals.js';
-import { deepMerge } from './deep-merge.js';
+import { sanitizeState } from './sanitize-state.js';
+import { scenarioIdToUpdate } from './cloud-scenarios.js';
 
 // APP_VERSION is fetched from /api/version at init — see initVersionBadge()
 
@@ -14,6 +15,9 @@ const SCENARIO_SOURCE_KEY = 'cda-uebung:scenario-source';
 
 let cloudScenarios = [];
 let selectedCloudScenarioId = null;
+// The cloud scenario the current form state came from ({ id, username }), if any. Only
+// this one is ever overwritten by a save — see scenarioIdToUpdate().
+let loadedCloudScenario = null;
 
 // Sinnvolle Default-Inhalte (RD-Übungs-tauglich, leicht anpassbar)
 function defaultState() {
@@ -112,7 +116,7 @@ let state = loadState();
 function loadState() {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) return deepMerge(defaultState(), JSON.parse(raw));
+        if (raw) return sanitizeState(JSON.parse(raw), defaultState());
     } catch {}
     return defaultState();
 }
@@ -492,7 +496,8 @@ async function loadLocalScenarioFromFile(file) {
     try {
         const text = await file.text();
         const loaded = JSON.parse(text);
-        state = deepMerge(defaultState(), loaded);
+        state = sanitizeState(loaded, defaultState());
+        loadedCloudScenario = null;
         saveState();
         rebindAll();
         const msg = `Lokales Szenario geladen: ${file.name}`;
@@ -597,7 +602,7 @@ function renderCloudScenarioSelect() {
     if (selectedCloudScenarioId) select.value = selectedCloudScenarioId;
 }
 
-async function saveCloudScenario() {
+async function saveCloudScenario({ asNew = false } = {}) {
     const username = getCloudUsername();
     if (!username) {
         const msg = 'Bitte zuerst einen Benutzernamen für Cloud-Speicherung eingeben.';
@@ -610,8 +615,9 @@ async function saveCloudScenario() {
     const title = prompt('Titel für das Cloud-Szenario:', defaultTitle);
     if (title === null) return;
 
+    const id = scenarioIdToUpdate(loadedCloudScenario, username, { asNew });
     const payload = {
-        id: selectedCloudScenarioId || undefined,
+        id,
         username,
         title: title.trim() || defaultTitle,
         state,
@@ -624,8 +630,11 @@ async function saveCloudScenario() {
     });
 
     selectedCloudScenarioId = saved.id;
-    await refreshCloudScenarios();
-    const savedMsg = `Cloud-Szenario gespeichert: ${saved.title}`;
+    loadedCloudScenario = { id: saved.id, username: saved.username };
+    await refreshCloudScenarios({ silent: true });
+    const savedMsg = id
+        ? `Cloud-Szenario aktualisiert: ${saved.title}`
+        : `Neues Cloud-Szenario gespeichert: ${saved.title}`;
     setStatus(savedMsg);
     notify(savedMsg, 'success');
 }
@@ -653,7 +662,8 @@ async function loadCloudScenario() {
     }
 
     const detail = await apiJson(url);
-    state = deepMerge(defaultState(), detail.state || {});
+    state = sanitizeState(detail.state, defaultState());
+    loadedCloudScenario = { id: detail.id, username: detail.username };
     saveState();
     rebindAll();
     const loadMsg = `Cloud-Szenario geladen: ${detail.title}`;
@@ -683,6 +693,7 @@ async function deleteCloudScenarioAsAdmin() {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${trimmedToken}` },
     });
+    if (loadedCloudScenario?.id === selectedCloudScenarioId) loadedCloudScenario = null;
     selectedCloudScenarioId = null;
     await refreshCloudScenarios();
     const deleteMsg = 'Cloud-Szenario per Admin-Recht gelöscht.';
@@ -752,15 +763,17 @@ function setupScenarioManager() {
             notify(msg, 'error');
         }
     });
-    document.getElementById('btn-cloud-save').addEventListener('click', async () => {
+    const onCloudSave = (options) => async () => {
         try {
-            await saveCloudScenario();
+            await saveCloudScenario(options);
         } catch (err) {
             const msg = `Cloud-Speicherung fehlgeschlagen: ${err.message}`;
             setStatus(msg);
             notify(msg, 'error');
         }
-    });
+    };
+    document.getElementById('btn-cloud-save').addEventListener('click', onCloudSave());
+    document.getElementById('btn-cloud-save-new').addEventListener('click', onCloudSave({ asNew: true }));
     document.getElementById('btn-cloud-load').addEventListener('click', async () => {
         try {
             await loadCloudScenario();
