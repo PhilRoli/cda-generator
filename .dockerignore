@@ -1,0 +1,12 @@
+# Only pom.xml, src/, assets/elga-stylesheet-uebung.xsl and entrypoint.sh are COPY'd.
+.git
+.github
+.idea
+.claude
+.mvn
+target
+data
+dist
+elga-lib
+node_modules
+.env

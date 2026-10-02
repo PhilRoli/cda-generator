@@ -21,6 +21,7 @@ rsync -az --delete \
   --exclude='.claude/' \
   --exclude='node_modules/' \
   --exclude='.env' \
+  --exclude='docker-compose.override.yml' \
   --exclude='.DS_Store' \
   --exclude='target/' \
   --exclude='data/' \
@@ -28,6 +29,7 @@ rsync -az --delete \
   . "$REMOTE:$REMOTE_DIR"
 
 echo "→ Rebuilding backend container"
-ssh "$REMOTE" "cd $REMOTE_DIR && docker compose up -d --build"
+# --wait blocks until the compose healthcheck passes and fails the deploy if it doesn't.
+ssh "$REMOTE" "cd $REMOTE_DIR && docker compose up -d --build --wait --wait-timeout 120"
 
 echo "✓ Deploy sync complete"

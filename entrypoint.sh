@@ -13,5 +13,11 @@ chown -R appuser:appuser /app/data
 
 # Drop permanently to appuser and start the JVM.
 # Point the PDFBox font cache at the persistent data volume so it is built once
-# and reused across restarts.
-exec gosu appuser java -Dpdfbox.fontcache=/app/data -jar /app/app.jar "$@"
+# and reused across restarts. Size the heap from the container memory limit
+# (mem_limit in docker-compose.yml) and exit on OOM so Docker restarts a clean JVM
+# instead of leaving a half-broken one running.
+exec gosu appuser java \
+    -XX:MaxRAMPercentage=75 \
+    -XX:+ExitOnOutOfMemoryError \
+    -Dpdfbox.fontcache=/app/data \
+    -jar /app/app.jar "$@"
