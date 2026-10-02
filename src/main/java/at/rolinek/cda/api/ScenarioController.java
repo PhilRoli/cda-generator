@@ -3,7 +3,7 @@ package at.rolinek.cda.api;
 import at.rolinek.cda.security.LogSafe;
 import at.rolinek.cda.scenario.ScenarioRecord;
 import at.rolinek.cda.scenario.ScenarioService;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotBlank;
 import org.slf4j.Logger;
