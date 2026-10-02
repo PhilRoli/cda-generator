@@ -1,5 +1,6 @@
 package at.rolinek.cda.api;
 
+import at.rolinek.cda.security.LogSafe;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
@@ -33,7 +34,8 @@ public final class ClientIp {
             String first = commaIdx >= 0 ? xff.substring(0, commaIdx) : xff;
             String trimmed = first.trim();
             if (!trimmed.isEmpty()) {
-                return trimmed;
+                // Only Caddy should set this header, but it ends up in logs either way.
+                return LogSafe.of(trimmed);
             }
         }
         String remote = request.getRemoteAddr();

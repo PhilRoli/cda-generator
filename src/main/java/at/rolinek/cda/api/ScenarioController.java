@@ -1,5 +1,6 @@
 package at.rolinek.cda.api;
 
+import at.rolinek.cda.security.LogSafe;
 import at.rolinek.cda.scenario.ScenarioRecord;
 import at.rolinek.cda.scenario.ScenarioService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -57,7 +58,7 @@ public class ScenarioController {
         ScenarioRecord record = isPublic
             ? scenarioService.getByIdPublic(id)
             : scenarioService.getByIdForUser(id, username);
-        LOG.info("event=scenario_loaded ip={} id={} public={}", ClientIp.from(httpRequest), id, isPublic);
+        LOG.info("event=scenario_loaded ip={} id={} public={}", ClientIp.from(httpRequest), LogSafe.of(id), isPublic);
         return ScenarioDetailResponse.from(record, scenarioService.payloadToJson(record));
     }
 
@@ -67,7 +68,7 @@ public class ScenarioController {
         ScenarioRecord saved = scenarioService.saveForUser(
             new ScenarioService.ScenarioSaveRequest(body.id(), body.username(), body.title(), body.state())
         );
-        LOG.info("event=scenario_saved ip={} user={} id={} title={} action={}", ClientIp.from(httpRequest), saved.username(), saved.id(), saved.title(), action);
+        LOG.info("event=scenario_saved ip={} user={} id={} title={} action={}", ClientIp.from(httpRequest), LogSafe.of(saved.username()), LogSafe.of(saved.id()), LogSafe.of(saved.title()), action);
         return ScenarioSummaryResponse.from(saved);
     }
 
@@ -87,7 +88,7 @@ public class ScenarioController {
         HttpServletRequest httpRequest
     ) {
         scenarioService.adminDelete(id, authorization);
-        LOG.info("event=scenario_admin_deleted ip={} id={}", ClientIp.from(httpRequest), id);
+        LOG.info("event=scenario_admin_deleted ip={} id={}", ClientIp.from(httpRequest), LogSafe.of(id));
     }
 
     @GetMapping("/admin/scenarios/export")

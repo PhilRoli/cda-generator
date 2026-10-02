@@ -1,5 +1,6 @@
 package at.rolinek.cda.pdf;
 
+import at.rolinek.cda.security.LogSafe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -41,7 +42,7 @@ public class XmlSafetyGuard {
             factory.newDocumentBuilder()
                     .parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
         } catch (Exception ex) {
-            LOG.warn("XML-Sicherheitsüberprüfung fehlgeschlagen: {}", ex.getMessage());
+            LOG.warn("XML-Sicherheitsüberprüfung fehlgeschlagen: {}", LogSafe.of(ex.getMessage()));
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ungültiges oder nicht erlaubtes XML.");
         }
     }
