@@ -24,7 +24,6 @@ RUN groupadd --system appuser && useradd --system --gid appuser --no-create-home
 RUN apt-get update && apt-get install -y --no-install-recommends gosu && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/target/cda-uebung-server.jar /app/app.jar
-COPY scripts/cda2pdf-uebung /app/scripts/cda2pdf-uebung
 COPY assets/elga-stylesheet-uebung.xsl /app/assets/elga-stylesheet-uebung.xsl
 COPY entrypoint.sh /app/entrypoint.sh
 

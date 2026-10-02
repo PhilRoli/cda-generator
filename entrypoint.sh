@@ -1,6 +1,6 @@
 #!/bin/sh
 # The ELGA CDA2PDF library is invoked in-process via reflection over the jars mounted
-# in /app/elga-lib, so no runtime compilation of wrapper classes is required.
+# in /app/elga-lib.
 
 # Docker named volumes are initialised with root:root ownership, which overwrites
 # the image-time `chown -R appuser /app` before the volume is mounted.  Fix the

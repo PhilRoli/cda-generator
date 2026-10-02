@@ -7,7 +7,6 @@ public class AppProperties {
     private String version = "unknown";
     private String dbPath = "data/cda-uebung.db";
     private String elgaLibDir = "elga-lib";
-    private String elgaWrapperDir = "scripts/cda2pdf-uebung";
     private String elgaStylesheetPath = "assets/ELGA_Stylesheet_v1.0.xsl";
     private String watermarkText = "ÜBUNGSDOKUMENT!";
     private float watermarkOpacity = 0.17f;
@@ -38,14 +37,6 @@ public class AppProperties {
 
     public void setElgaLibDir(String elgaLibDir) {
         this.elgaLibDir = elgaLibDir;
-    }
-
-    public String getElgaWrapperDir() {
-        return elgaWrapperDir;
-    }
-
-    public void setElgaWrapperDir(String elgaWrapperDir) {
-        this.elgaWrapperDir = elgaWrapperDir;
     }
 
     public String getElgaStylesheetPath() {
