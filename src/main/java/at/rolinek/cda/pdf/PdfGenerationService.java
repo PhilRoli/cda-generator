@@ -2,12 +2,16 @@ package at.rolinek.cda.pdf;
 
 import at.rolinek.cda.config.AppProperties;
 import jakarta.annotation.PreDestroy;
+import org.apache.fontbox.ttf.CmapLookup;
+import org.apache.fontbox.ttf.TTFParser;
+import org.apache.fontbox.ttf.TrueTypeFont;
+import org.apache.logging.slf4j.SLF4JProvider;
 import org.apache.pdfbox.io.MemoryUsageSetting;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.apache.pdfbox.pdmodel.graphics.state.PDExtendedGraphicsState;
 import org.apache.pdfbox.util.Matrix;
 import org.slf4j.Logger;
@@ -27,6 +31,7 @@ import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -73,6 +78,18 @@ public class PdfGenerationService {
     };
     private static final String BUILDER_CLASS = "at.gv.elga.cda2pdflib.addon.CDA2PDFBuilder";
     private static final String CONVERTER_CLASS = "at.gv.elga.cda2pdflib.CDA2PDFConverter";
+
+    /**
+     * Bundled watermark font (DejaVu Sans Bold, Bitstream Vera license — see
+     * {@code fonts/LICENSE_DEJAVU.txt}). Embedded explicitly rather than using PDFBox's
+     * standard-14 fonts because this container has none of the matching system fonts
+     * (Helvetica/Times/Courier), so PDFBox would substitute at render time and log a
+     * WARN per base-14 font name every time. It also gives {@link #toFontSafe} full
+     * Unicode coverage instead of WinAnsiEncoding's limited Latin-1 range.
+     */
+    private static final String WATERMARK_FONT_RESOURCE = "/fonts/DejaVuSans-Bold.ttf";
+    private static final byte[] WATERMARK_FONT_BYTES = loadWatermarkFontBytes();
+    private static final CmapLookup WATERMARK_FONT_CMAP = loadWatermarkFontCmap(WATERMARK_FONT_BYTES);
 
     private static final String UEBUNG_AUTH_USER = "Übungs-Generator";
     private static final String UEBUNG_BANNER_TEXT = "ÜBUNGSDOKUMENT — NUR FÜR TRAININGS!";
@@ -261,7 +278,7 @@ public class PdfGenerationService {
                 "PDF-Konverter ist derzeit nicht verfügbar.");
         }
         try {
-            URL[] urls = new URL[ELGA_REQUIRED_JARS.length];
+            URL[] elgaJarUrls = new URL[ELGA_REQUIRED_JARS.length];
             for (int i = 0; i < ELGA_REQUIRED_JARS.length; i++) {
                 Path jarPath = elgaLibDir.resolve(ELGA_REQUIRED_JARS[i]);
                 if (!Files.exists(jarPath)) {
@@ -269,10 +286,18 @@ public class PdfGenerationService {
                     throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                         "PDF-Konverter ist derzeit nicht verfügbar.");
                 }
-                urls[i] = jarPath.toUri().toURL();
+                elgaJarUrls[i] = jarPath.toUri().toURL();
             }
             // Parent = platform class loader to isolate the ELGA jars' bundled dependencies
-            // (FOP, Xalan, Log4j, ...) from the application classpath.
+            // (FOP, Xalan, Log4j, ...) from the application classpath. The log4j-to-slf4j
+            // bridge jar (plus its own slf4j-api dependency, since the platform class loader
+            // parent can't see the app's classpath either) is added on top so the ELGA jars'
+            // bundled log4j-api finds a provider and routes through the app's Logback config,
+            // instead of finding none and logging "Log4j API could not find a logging
+            // provider" straight to stderr.
+            URL[] urls = Arrays.copyOf(elgaJarUrls, elgaJarUrls.length + 2);
+            urls[elgaJarUrls.length] = SLF4JProvider.class.getProtectionDomain().getCodeSource().getLocation();
+            urls[elgaJarUrls.length + 1] = Logger.class.getProtectionDomain().getCodeSource().getLocation();
             URLClassLoader loader = new URLClassLoader(urls, ClassLoader.getPlatformClassLoader());
             Class<?> builderClass = Class.forName(BUILDER_CLASS, true, loader);
             Class<?> converterClass = Class.forName(CONVERTER_CLASS, true, loader);
@@ -283,6 +308,26 @@ public class PdfGenerationService {
             LOG.error("ELGA-Konverter konnte nicht initialisiert werden", ex);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                 "PDF-Konverter ist derzeit nicht verfügbar.");
+        }
+    }
+
+    private static byte[] loadWatermarkFontBytes() {
+        try (InputStream in = PdfGenerationService.class.getResourceAsStream(WATERMARK_FONT_RESOURCE)) {
+            if (in == null) {
+                throw new IllegalStateException("Watermark-Font-Ressource fehlt: " + WATERMARK_FONT_RESOURCE);
+            }
+            return in.readAllBytes();
+        } catch (IOException ex) {
+            throw new IllegalStateException("Watermark-Font-Ressource fehlt: " + WATERMARK_FONT_RESOURCE, ex);
+        }
+    }
+
+    private static CmapLookup loadWatermarkFontCmap(byte[] fontBytes) {
+        try {
+            TrueTypeFont ttf = new TTFParser().parse(new ByteArrayInputStream(fontBytes));
+            return ttf.getUnicodeCmapLookup();
+        } catch (IOException ex) {
+            throw new IllegalStateException("Watermark-Font konnte nicht gelesen werden", ex);
         }
     }
 
@@ -351,12 +396,14 @@ public class PdfGenerationService {
 
         try (PDDocument document = PDDocument.load(new ByteArrayInputStream(pdfBytes), MemoryUsageSetting.setupMixed(32 * 1024 * 1024));
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            PDType0Font watermarkFont =
+                PDType0Font.load(document, new ByteArrayInputStream(WATERMARK_FONT_BYTES), true);
             for (PDPage page : document.getPages()) {
                 PDRectangle pageRect = page.getMediaBox();
                 float centerX = pageRect.getLowerLeftX() + pageRect.getWidth() / 2f;
                 float centerY = pageRect.getLowerLeftY() + pageRect.getHeight() / 2f;
                 float fontSize = Math.max(40f, Math.min(pageRect.getWidth(), pageRect.getHeight()) / 8f);
-                float textWidth = (PDType1Font.HELVETICA_BOLD.getStringWidth(safeText) / 1000f) * fontSize;
+                float textWidth = (watermarkFont.getStringWidth(safeText) / 1000f) * fontSize;
                 Color color = new Color(150, 150, 150);
 
                 try (PDPageContentStream contentStream =
@@ -367,7 +414,7 @@ public class PdfGenerationService {
                     contentStream.setGraphicsStateParameters(graphicsState);
                     contentStream.setNonStrokingColor(color);
                     contentStream.beginText();
-                    contentStream.setFont(PDType1Font.HELVETICA_BOLD, fontSize);
+                    contentStream.setFont(watermarkFont, fontSize);
                     contentStream.setTextMatrix(Matrix.getRotateInstance(Math.toRadians(45), centerX, centerY));
                     contentStream.newLineAtOffset(-textWidth / 2f, 0f);
                     contentStream.showText(safeText);
@@ -387,11 +434,9 @@ public class PdfGenerationService {
         StringBuilder sb = new StringBuilder(text.length());
         for (int i = 0; i < text.length(); ) {
             int cp = text.codePointAt(i);
-            String ch = new String(Character.toChars(cp));
-            try {
-                PDType1Font.HELVETICA_BOLD.getStringWidth(ch);
-                sb.append(ch);
-            } catch (Exception ex) {
+            if (WATERMARK_FONT_CMAP.getGlyphId(cp) != 0) {
+                sb.appendCodePoint(cp);
+            } else {
                 sb.append('-');
             }
             i += Character.charCount(cp);

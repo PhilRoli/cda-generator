@@ -47,10 +47,13 @@ class PdfGenerationInProcessTest {
         assertThat(pdf.length).isGreaterThan(10_000);
         assertThat(new String(pdf, 0, 4, StandardCharsets.ISO_8859_1)).isEqualTo("%PDF");
 
-        // The default watermark text must have been overlaid by applyWatermark().
+        // The default watermark text must have been overlaid by applyWatermark(). The
+        // watermark is drawn rotated 45 degrees, so PDFBox's text stripper can split it
+        // across several extracted "lines" depending on the font's glyph metrics —
+        // compare with whitespace collapsed rather than requiring one contiguous line.
         try (PDDocument doc = PDDocument.load(new ByteArrayInputStream(pdf))) {
-            String text = new PDFTextStripper().getText(doc);
-            assertThat(text).contains(new AppProperties().getWatermarkText());
+            String text = new PDFTextStripper().getText(doc).replaceAll("\\s+", "");
+            assertThat(text).contains(new AppProperties().getWatermarkText().replaceAll("\\s+", ""));
         }
     }
 

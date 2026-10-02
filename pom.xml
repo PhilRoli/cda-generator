@@ -58,6 +58,14 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Already a transitive compile dependency via spring-boot-starter-logging;
+             declared explicitly because PdfGenerationService references its
+             SLF4JProvider class directly to give the isolated ELGA class loader a
+             log4j-api provider (see PdfGenerationService.createElgaConverter). -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-to-slf4j</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
@@ -66,6 +74,16 @@
             <resource>
                 <directory>src/main/resources</directory>
                 <filtering>true</filtering>
+                <excludes>
+                    <exclude>fonts/**</exclude>
+                </excludes>
+            </resource>
+            <!-- Binary font asset: must not go through Maven resource filtering
+                 (text placeholder substitution corrupts binary files). -->
+            <resource>
+                <directory>src/main/resources/fonts</directory>
+                <targetPath>fonts</targetPath>
+                <filtering>false</filtering>
             </resource>
         </resources>
         <plugins>
