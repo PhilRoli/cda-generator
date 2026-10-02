@@ -21,7 +21,7 @@ jobs:
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "25"
           cache: maven
       # ELGA jars aren't in the repo, so PdfGenerationInProcessTest skips itself here.
       - run: ./mvnw -B test
@@ -30,8 +30,26 @@ jobs:
           bun-version: "1.4.2"
       - run: bun test
 
+  # Builds the production image and starts it via compose, exactly as the server does,
+  # so Dockerfile/compose/healthcheck breakage (e.g. a base-image bump) fails here
+  # instead of during the deploy. Without the ELGA jars only the PDF endpoints are off.
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build and start the stack
+        run: docker compose up -d --build --wait --wait-timeout 120
+      - name: Health check
+        run: curl -fsS http://127.0.0.1:48718/api/healthz
+      - name: Container logs
+        if: always()
+        run: docker compose logs --no-color
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
   deploy:
-    needs: test
+    needs: [test, image]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment: production

@@ -1,6 +1,7 @@
 package at.rolinek.cda.pdf;
 
 import at.rolinek.cda.config.AppProperties;
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.Test;
@@ -51,7 +52,7 @@ class PdfGenerationInProcessTest {
         // watermark is drawn rotated 45 degrees, so PDFBox's text stripper can split it
         // across several extracted "lines" depending on the font's glyph metrics —
         // compare with whitespace collapsed rather than requiring one contiguous line.
-        try (PDDocument doc = PDDocument.load(new ByteArrayInputStream(pdf))) {
+        try (PDDocument doc = Loader.loadPDF(pdf)) {
             String text = new PDFTextStripper().getText(doc).replaceAll("\\s+", "");
             assertThat(text).contains(new AppProperties().getWatermarkText().replaceAll("\\s+", ""));
         }

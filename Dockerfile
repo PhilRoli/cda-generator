@@ -1,4 +1,4 @@
-FROM maven:3.9.9-eclipse-temurin-21 AS build
+FROM maven:3.10.0-eclipse-temurin-25 AS build
 WORKDIR /app
 COPY pom.xml ./
 COPY src ./src
@@ -6,9 +6,9 @@ COPY src ./src
 # doesn't re-download every dependency.
 RUN --mount=type=cache,target=/root/.m2 mvn -q -DskipTests package
 
-# JRE is enough at runtime (nothing compiles in the container); it ships the same
-# curl/fontconfig/locales packages as the JDK image.
-FROM eclipse-temurin:21-jre
+# JRE is enough at runtime (nothing compiles in the container). Pinned to the
+# Ubuntu 24.04 (noble) variant: the user setup below relies on its uid layout.
+FROM eclipse-temurin:25-jre-noble
 WORKDIR /app
 
 # The container's default locale is POSIX/C, under which the JVM picks
@@ -25,7 +25,8 @@ RUN groupadd --system appuser && useradd --system --gid appuser --no-create-home
 # gosu is used by entrypoint.sh to permanently drop from root to appuser
 # after fixing /app/data ownership on first boot (see entrypoint.sh).
 # A root->unprivileged exec via gosu requires no Linux capabilities.
-RUN apt-get update && apt-get install -y --no-install-recommends gosu && rm -rf /var/lib/apt/lists/*
+# curl backs the compose healthcheck; Temurin 25 images no longer include it.
+RUN apt-get update && apt-get install -y --no-install-recommends gosu curl && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/target/cda-uebung-server.jar /app/app.jar
 COPY assets/elga-stylesheet-uebung.xsl /app/assets/elga-stylesheet-uebung.xsl

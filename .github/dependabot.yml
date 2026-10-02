@@ -15,3 +15,8 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    # A major image bump is a Java version jump (and often a non-LTS one); do those
+    # deliberately together with java.version in pom.xml and the CI setup-java version.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]

@@ -4,8 +4,8 @@ import at.rolinek.cda.config.AppProperties;
 import at.rolinek.cda.pdf.PdfGenerationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.TestPropertySource;
@@ -33,12 +33,12 @@ class PdfControllerCleanPasswordTest {
     @Autowired
     MockMvc mvc;
 
-    @MockBean
+    @MockitoBean
     PdfGenerationService pdfGenerationService;
 
     // AppProperties is injected into PdfController — we provide it as a mock bean
     // so tests can control the configured password without touching application.properties.
-    @MockBean
+    @MockitoBean
     AppProperties appProperties;
 
     // -------------------------------------------------------------------------

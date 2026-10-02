@@ -6,7 +6,9 @@ import org.apache.fontbox.ttf.CmapLookup;
 import org.apache.fontbox.ttf.TTFParser;
 import org.apache.fontbox.ttf.TrueTypeFont;
 import org.apache.logging.slf4j.SLF4JProvider;
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.io.MemoryUsageSetting;
+import org.apache.pdfbox.io.RandomAccessReadBuffer;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -361,7 +363,7 @@ public class PdfGenerationService {
 
     private static CmapLookup loadWatermarkFontCmap(byte[] fontBytes) {
         try {
-            TrueTypeFont ttf = new TTFParser().parse(new ByteArrayInputStream(fontBytes));
+            TrueTypeFont ttf = new TTFParser().parse(new RandomAccessReadBuffer(fontBytes));
             return ttf.getUnicodeCmapLookup();
         } catch (IOException ex) {
             throw new IllegalStateException("Watermark-Font konnte nicht gelesen werden", ex);
@@ -431,7 +433,8 @@ public class PdfGenerationService {
             return pdfBytes;
         }
 
-        try (PDDocument document = PDDocument.load(new ByteArrayInputStream(pdfBytes), MemoryUsageSetting.setupMixed(32 * 1024 * 1024));
+        try (PDDocument document = Loader.loadPDF(pdfBytes, null, null, null,
+                MemoryUsageSetting.setupMixed(32 * 1024 * 1024).streamCache);
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             PDType0Font watermarkFont =
                 PDType0Font.load(document, new ByteArrayInputStream(WATERMARK_FONT_BYTES), true);

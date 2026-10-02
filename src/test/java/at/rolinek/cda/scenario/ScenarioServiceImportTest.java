@@ -1,7 +1,7 @@
 package at.rolinek.cda.scenario;
 
 import at.rolinek.cda.config.AppProperties;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -148,7 +148,7 @@ class ScenarioServiceImportTest {
     }
 
     static java.util.stream.Stream<org.junit.jupiter.params.provider.Arguments> invalidEntries() {
-        com.fasterxml.jackson.databind.node.ObjectNode state = new ObjectMapper().createObjectNode();
+        tools.jackson.databind.node.ObjectNode state = new ObjectMapper().createObjectNode();
         String ts = "2026-01-01T00:00:00Z";
         return java.util.stream.Stream.of(
             org.junit.jupiter.params.provider.Arguments.of("blank id",
