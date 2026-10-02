@@ -2,11 +2,11 @@
 
 Web-App zum Erzeugen von ELGA-CDA-Übungsdokumenten (Entlassungsbrief Ärztlich) für den Rettungsdienst.
 
-Neu in dieser Version:
+Funktionen:
 
 - **Direkter PDF-Download** aus der App (`XML -> ELGA CDA2PDF -> Watermark`)
-- **Cloud-Szenarien mit Benutzername** (SQLite)
-- **Admin-Löschung** von Szenarien per Admin-Token
+- **Cloud-Szenarien mit Benutzername** (SQLite), inkl. automatischem Backup
+- **Admin-Funktionen** per Admin-Token (Löschen, Export/Import)
 - **Deployment-Setup für Hetzner/Caddy** (`cda.rolinek.at`)
 
 ## Architektur
@@ -15,7 +15,7 @@ Neu in dieser Version:
 - **Backend (Java / Spring Boot):** REST-API unter `/api/*`
 - **PDF-Pipeline:**
   1. Browser sendet CDA-XML an `POST /api/pdf`
-  2. Backend ruft ELGA `CDA2PDF` über den Java-Wrapper auf
+  2. Backend ruft die ELGA-`CDA2PDF`-Library in-process auf (isolierter Class Loader über die Jars in `elga-lib/`)
   3. Backend stempelt ein diagonales Wasserzeichen ins fertige PDF (PDFBox)
   4. Browser lädt das PDF direkt herunter
 - **Szenario-Speicher:** SQLite-Datei im Docker-Volume (`/app/data/cda-uebung.db`)
@@ -32,13 +32,20 @@ Neu in dieser Version:
 ## Lokaler Backend-Start
 
 ```bash
-APP_ELGA_LIB_DIR=/absoluter/pfad/zu/CDA2PDFLib mvn spring-boot:run
+APP_ELGA_LIB_DIR=/absoluter/pfad/zu/CDA2PDFLib ./mvnw spring-boot:run
 ```
 
 Healthcheck:
 
 ```bash
 curl -s http://localhost:8080/api/healthz
+```
+
+## Tests
+
+```bash
+./mvnw test   # Backend (JUnit)
+bun test      # Frontend (js/__tests__)
 ```
 
 ## Cloud-Szenarien
@@ -53,12 +60,19 @@ Relevante API-Endpunkte:
 
 - `POST /api/scenarios`
 - `GET /api/scenarios?username=<name>`
-- `GET /api/scenarios/{id}?username=<name>`
-- `DELETE /api/admin/scenarios/{id}` mit Header `Authorization: Bearer <token>`
+- `GET /api/scenarios/all`
+- `GET /api/scenarios/{id}` (optional `?username=<name>`)
+
+Admin-Endpunkte (Header `Authorization: Bearer <token>`):
+
+- `GET /api/admin/scenarios`
+- `DELETE /api/admin/scenarios/{id}`
+- `GET /api/admin/scenarios/export`
+- `POST /api/admin/scenarios/import`
 
 ## Deployment auf Hetzner (`cda.rolinek.at`)
 
-Diese Umsetzung folgt deiner Server-Strategie (Caddy + Docker Compose).
+Setup mit Caddy als Reverse Proxy und Docker Compose.
 
 ### 1. App-Dateien auf den Server bringen
 
@@ -85,7 +99,7 @@ APP_PORT=48718
 APP_ADMIN_TOKEN=<starkes-geheimnis>
 APP_WATERMARK_TEXT=ÜBUNGSDOKUMENT
 APP_WATERMARK_OPACITY=0.17
-APP_CLEAN_PDF_PASSWORD=mbi24
+APP_CLEAN_PDF_PASSWORD=<passwort>
 ```
 
 `APP_CLEAN_PDF_PASSWORD` schützt den Endpoint zum Erzeugen eines **sauberen PDFs ohne Wasserzeichen** (`POST /api/pdf/upload`). Ohne gesetzten Wert ist diese Funktion deaktiviert (fail-closed).

@@ -60,7 +60,7 @@ class PdfControllerCleanPasswordTest {
 
         mvc.perform(multipart("/api/pdf/upload")
                         .file(DUMMY_XML)
-                        .header("X-Clean-Pdf-Password", "mbi24"))
+                        .header("X-Clean-Pdf-Password", "test-password"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message").value("Funktion ist nicht konfiguriert."));
     }
@@ -80,7 +80,7 @@ class PdfControllerCleanPasswordTest {
 
     @Test
     void configuredPassword_noHeader_returns403WrongPassword() throws Exception {
-        given(appProperties.getCleanPdfPassword()).willReturn("mbi24");
+        given(appProperties.getCleanPdfPassword()).willReturn("test-password");
 
         mvc.perform(multipart("/api/pdf/upload").file(DUMMY_XML))
                 .andExpect(status().isForbidden())
@@ -89,7 +89,7 @@ class PdfControllerCleanPasswordTest {
 
     @Test
     void configuredPassword_wrongHeader_returns403WrongPassword() throws Exception {
-        given(appProperties.getCleanPdfPassword()).willReturn("mbi24");
+        given(appProperties.getCleanPdfPassword()).willReturn("test-password");
 
         mvc.perform(multipart("/api/pdf/upload")
                         .file(DUMMY_XML)
@@ -100,7 +100,7 @@ class PdfControllerCleanPasswordTest {
 
     @Test
     void configuredPassword_emptyHeader_returns403WrongPassword() throws Exception {
-        given(appProperties.getCleanPdfPassword()).willReturn("mbi24");
+        given(appProperties.getCleanPdfPassword()).willReturn("test-password");
 
         mvc.perform(multipart("/api/pdf/upload")
                         .file(DUMMY_XML)
@@ -115,13 +115,13 @@ class PdfControllerCleanPasswordTest {
 
     @Test
     void configuredPassword_correctHeader_proceedsToService() throws Exception {
-        given(appProperties.getCleanPdfPassword()).willReturn("mbi24");
+        given(appProperties.getCleanPdfPassword()).willReturn("test-password");
         given(pdfGenerationService.generatePdfClean(anyString()))
                 .willReturn(new byte[]{0x25, 0x50, 0x44, 0x46}); // minimal %PDF magic bytes
 
         mvc.perform(multipart("/api/pdf/upload")
                         .file(DUMMY_XML)
-                        .header("X-Clean-Pdf-Password", "mbi24"))
+                        .header("X-Clean-Pdf-Password", "test-password"))
                 .andExpect(status().isOk());
     }
 
@@ -132,19 +132,19 @@ class PdfControllerCleanPasswordTest {
     @Test
     void constantTimeEquals_sameValues_returnsTrue() {
         org.assertj.core.api.Assertions.assertThat(
-                PdfController.constantTimeEquals("mbi24", "mbi24")).isTrue();
+                PdfController.constantTimeEquals("test-password", "test-password")).isTrue();
     }
 
     @Test
     void constantTimeEquals_differentValues_returnsFalse() {
         org.assertj.core.api.Assertions.assertThat(
-                PdfController.constantTimeEquals("mbi24", "wrong")).isFalse();
+                PdfController.constantTimeEquals("test-password", "wrong")).isFalse();
     }
 
     @Test
     void constantTimeEquals_nullAndNonNull_returnsFalse() {
         org.assertj.core.api.Assertions.assertThat(
-                PdfController.constantTimeEquals(null, "mbi24")).isFalse();
+                PdfController.constantTimeEquals(null, "test-password")).isFalse();
     }
 
     @Test
