@@ -138,6 +138,9 @@ cda.rolinek.at {
     }
     handle {
         root * /opt/apps/cda-uebung/dist
+        encode gzip
+        # Unhashed asset names: always revalidate so a deploy is picked up immediately.
+        header Cache-Control "no-cache"
         try_files {path} /index.html
         file_server
     }
