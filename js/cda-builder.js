@@ -6,9 +6,13 @@ import { LOGO_BASE64, LOGO_MIME } from './logo-base64.js';
 const HL7_NS = 'urn:hl7-org:v3';
 const STYLESHEET_HREF = 'ELGA_Stylesheet_v1.0.xsl';
 
+// Characters XML 1.0 forbids even when escaped (text pasted from Word/PDF can carry them).
+const XML_ILLEGAL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g;
+
 export function escapeXml(str) {
     if (str === null || str === undefined) return '';
     return String(str)
+        .replace(XML_ILLEGAL_CHARS, '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
@@ -19,7 +23,10 @@ export function escapeXml(str) {
 // Convert "2026-04-26T15:30" or "2026-04-26" → "20260426153000+0100" / "20260426"
 export function toHl7Time(value, withTime = true) {
     if (!value) return '';
-    const d = new Date(value);
+    // new Date('YYYY-MM-DD') is UTC midnight, which is the previous day west of UTC —
+    // build date-only values as local midnight instead.
+    const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    const d = dateOnly ? new Date(+dateOnly[1], +dateOnly[2] - 1, +dateOnly[3]) : new Date(value);
     if (isNaN(d)) return '';
     const pad = (n) => String(n).padStart(2, '0');
     const date = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
@@ -30,6 +37,17 @@ export function toHl7Time(value, withTime = true) {
     const tzAbs = Math.abs(tzMin);
     const tz = `${tzSign}${pad(Math.floor(tzAbs / 60))}${pad(tzAbs % 60)}`;
     return `${date}${time}${tz}`;
+}
+
+// value="..." for a valid time, nullFlavor="UNK" otherwise (an empty value is invalid CDA).
+function timeAttr(value, withTime = true) {
+    const hl7 = toHl7Time(value, withTime);
+    return hl7 ? `value="${hl7}"` : 'nullFlavor="UNK"';
+}
+
+// Optional telecom: omitted entirely when no number is known.
+function renderTelecom(phone) {
+    return phone ? `<telecom value="tel:${escapeXml(phone)}"/>` : '';
 }
 
 export function uuid() {
@@ -58,16 +76,18 @@ function renderRecordTarget(patient) {
     return `<recordTarget>
 <patientRole>
 <id extension="${escapeXml(patient.patientId || '0000000')}" root="1.2.40.0.34.99.111.1.1"/>
-<id assigningAuthorityName="Österreichische Sozialversicherung" extension="${escapeXml(patient.svnr)}" root="1.2.40.0.10.1.4.3.1"/>
+${patient.svnr
+        ? `<id assigningAuthorityName="Österreichische Sozialversicherung" extension="${escapeXml(patient.svnr)}" root="1.2.40.0.10.1.4.3.1"/>`
+        : '<id nullFlavor="UNK"/>'}
 ${renderAddress(patient.address)}
-<telecom value="tel:${escapeXml(patient.phone || '')}"/>
+${renderTelecom(patient.phone)}
 <patient>
 <name>
 <given>${escapeXml(patient.givenName)}</given>
 <family>${escapeXml(patient.familyName)}</family>
 </name>
 <administrativeGenderCode code="${escapeXml(patient.gender)}" codeSystem="2.16.840.1.113883.5.1" codeSystemName="HL7:AdministrativeGender" displayName="${patient.gender === 'M' ? 'Male' : 'Female'}"/>
-<birthTime value="${toHl7Time(patient.birthDate, false)}"/>
+<birthTime ${timeAttr(patient.birthDate, false)}/>
 </patient>
 </patientRole>
 </recordTarget>`;
@@ -76,7 +96,7 @@ ${renderAddress(patient.address)}
 function renderOrganizationBlock(org) {
     return `<id assigningAuthorityName="GDA-Index" root="1.2.40.0.34.3.1.99999"/>
 <name>${escapeXml(org.name)}</name>
-<telecom value="tel:${escapeXml(org.phone || '')}"/>
+${renderTelecom(org.phone)}
 ${renderAddress(org.address)}`;
 }
 
@@ -91,10 +111,10 @@ ${prefix}
 
 function renderAuthor(author, organization, time) {
     return `<author>
-<time value="${toHl7Time(time)}"/>
+<time ${timeAttr(time)}/>
 <assignedAuthor>
 <id root="1.2.40.0.34.99.111.1.3"/>
-<telecom value="tel:${escapeXml(organization.phone || '')}"/>
+${renderTelecom(organization.phone)}
 <assignedPerson>
 ${renderPersonBlock(author)}
 </assignedPerson>
@@ -117,11 +137,11 @@ ${renderOrganizationBlock(organization)}
 
 function renderLegalAuthenticator(author, organization, time) {
     return `<legalAuthenticator>
-<time value="${toHl7Time(time)}"/>
+<time ${timeAttr(time)}/>
 <signatureCode code="S"/>
 <assignedEntity>
 <id root="1.2.40.0.34.99.111.1.3"/>
-<telecom value="tel:${escapeXml(organization.phone || '')}"/>
+${renderTelecom(organization.phone)}
 <assignedPerson>
 ${renderPersonBlock(author)}
 </assignedPerson>
@@ -134,8 +154,8 @@ ${renderOrganizationBlock(organization)}
 
 function renderEncompassingEncounter(encounter, organization) {
     if (!encounter || (!encounter.admissionDate && !encounter.dischargeDate)) return '';
-    const low = encounter.admissionDate ? `<low value="${toHl7Time(encounter.admissionDate)}"/>` : '';
-    const high = encounter.dischargeDate ? `<high value="${toHl7Time(encounter.dischargeDate)}"/>` : '';
+    const low = encounter.admissionDate ? `<low ${timeAttr(encounter.admissionDate)}/>` : '';
+    const high = encounter.dischargeDate ? `<high ${timeAttr(encounter.dischargeDate)}/>` : '';
     const type = encounter.type || 'IMP';
     const encounterCode =
         type === 'AMB'
@@ -168,13 +188,13 @@ function renderParticipantAnsprechpartner(person, organization) {
 <templateId root="1.2.40.0.34.11.1.1.1"/>
 <associatedEntity classCode="PROV">
 ${renderAddress(organization.address)}
-<telecom value="tel:${escapeXml(organization.phone || '')}"/>
+${renderTelecom(organization.phone)}
 <associatedPerson>
 ${renderPersonBlock(person)}
 </associatedPerson>
 <scopingOrganization>
 <name>${escapeXml(organization.name)}</name>
-<telecom value="tel:${escapeXml(organization.phone || '')}"/>
+${renderTelecom(organization.phone)}
 ${renderAddress(organization.address)}
 </scopingOrganization>
 </associatedEntity>
@@ -190,8 +210,8 @@ function renderDocumentationOf(encounter) {
 </serviceEvent>
 </documentationOf>`;
     }
-    const low = encounter.admissionDate ? `<low value="${toHl7Time(encounter.admissionDate)}"/>` : '<low nullFlavor="UNK"/>';
-    const high = encounter.dischargeDate ? `<high value="${toHl7Time(encounter.dischargeDate)}"/>` : '<high nullFlavor="UNK"/>';
+    const low = encounter.admissionDate ? `<low ${timeAttr(encounter.admissionDate)}/>` : '<low nullFlavor="UNK"/>';
+    const high = encounter.dischargeDate ? `<high ${timeAttr(encounter.dischargeDate)}/>` : '<high nullFlavor="UNK"/>';
     return `<documentationOf>
 <serviceEvent classCode="ACT" moodCode="EVN">
 <code code="GDLSTATAUF" codeSystem="1.2.40.0.34.5.21" codeSystemName="ELGA_Gesundheitsdienstleistung" displayName="Stationärer Aufenthalt"/>
@@ -277,7 +297,7 @@ export function composeDocument({ documentMeta, patient, author, organization, e
 <id extension="${uuid()}" root="1.2.40.0.34.99.111.1.1"/>
 <code code="${escapeXml(documentMeta.code || '11490-0')}" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="${escapeXml(documentMeta.codeDisplayName || 'Discharge summarization Note')}"/>
 <title>${escapeXml(documentMeta.title || 'Entlassungsbrief')}</title>
-<effectiveTime value="${toHl7Time(time)}"/>
+<effectiveTime ${timeAttr(time)}/>
 <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25" codeSystemName="HL7:Confidentiality" displayName="normal"/>
 <languageCode code="de-AT"/>
 <setId root="${uuid()}"/>

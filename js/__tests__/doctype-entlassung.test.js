@@ -213,3 +213,37 @@ describe('buildEntlassungsbrief – UUID normalization', () => {
         expect(xml1).toBe(xml2);
     });
 });
+
+// ---------------------------------------------------------------------------
+// Empty optional fields must not produce invalid CDA (empty ids / times / tel:)
+// ---------------------------------------------------------------------------
+
+describe('buildEntlassungsbrief – empty optional fields', () => {
+    const withEmpty = (patient, organization = {}) => ({
+        ...BASE_STATE,
+        patient: { ...BASE_STATE.patient, ...patient },
+        organization: { ...BASE_STATE.organization, ...organization },
+    });
+
+    test('empty SVNR yields a nullFlavor id instead of an empty extension', () => {
+        const xml = buildEntlassungsbrief(withEmpty({ svnr: '' }));
+        expect(xml).not.toContain('extension=""');
+        expect(xml).toContain('<id nullFlavor="UNK"/>');
+    });
+
+    test('empty birth date yields birthTime nullFlavor', () => {
+        const xml = buildEntlassungsbrief(withEmpty({ birthDate: '' }));
+        expect(xml).toContain('<birthTime nullFlavor="UNK"/>');
+        expect(xml).not.toContain('value=""');
+    });
+
+    test('empty phone numbers omit the telecom element', () => {
+        const xml = buildEntlassungsbrief(withEmpty({ phone: '' }, { phone: '' }));
+        expect(xml).not.toContain('value="tel:"');
+    });
+
+    test('empty document date yields nullFlavor times', () => {
+        const xml = buildEntlassungsbrief({ ...BASE_STATE, documentDate: '' });
+        expect(xml).not.toContain('value=""');
+    });
+});

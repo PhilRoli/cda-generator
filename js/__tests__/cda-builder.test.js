@@ -6,6 +6,15 @@ import { escapeXml, toHl7Time } from '../cda-builder.js';
 // ---------------------------------------------------------------------------
 
 describe('escapeXml', () => {
+    test('strips control characters that are illegal in XML 1.0', () => {
+        // Text pasted from Word/PDF can carry these; they make the document unparseable.
+        expect(escapeXml('a\u0000b\u0008c\u000Bd\u000Ce\u001Ff\uFFFEg')).toBe('abcdefg');
+    });
+
+    test('keeps tab, newline and carriage return', () => {
+        expect(escapeXml('a\tb\nc\rd')).toBe('a\tb\nc\rd');
+    });
+
     test('escapes & character', () => {
         expect(escapeXml('a & b')).toBe('a &amp; b');
     });

@@ -177,6 +177,10 @@ function sectionPatientenverfuegung(state) {
     const statusText = statusLabels[pv.status] || pv.status;
     const formatDate = (d) => {
         if (!d) return '';
+        // Format date-only values directly; new Date('YYYY-MM-DD') is UTC midnight and
+        // would show the previous day west of UTC.
+        const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
+        if (dateOnly) return `${dateOnly[3]}.${dateOnly[2]}.${dateOnly[1]}`;
         const dt = new Date(d);
         if (isNaN(dt)) return d;
         const pad = (n) => String(n).padStart(2, '0');
