@@ -8,7 +8,7 @@ RUN --mount=type=cache,target=/root/.m2 mvn -q -DskipTests package
 
 # JRE is enough at runtime (nothing compiles in the container); it ships the same
 # curl/fontconfig/locales packages as the JDK image.
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:24-jre
 WORKDIR /app
 
 # The container's default locale is POSIX/C, under which the JVM picks
