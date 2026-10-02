@@ -23,7 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
+import at.rolinek.cda.security.ConstantTime;
 
 @RestController
 @RequestMapping("/api")
@@ -100,27 +100,8 @@ public class PdfController {
         }
     }
 
-    /**
-     * Constant-time string comparison that does not short-circuit on length difference,
-     * preventing timing-based password oracle attacks.
-     * Both inputs are SHA-256 hashed before comparing via MessageDigest.isEqual so that
-     * the fixed-length digests prevent the length check inside isEqual from leaking
-     * information about the actual password length.
-     */
     static boolean constantTimeEquals(String a, String b) {
-        // Treat null as empty string so the comparison always takes the same path
-        byte[] aHash = sha256((a != null ? a : "").getBytes(StandardCharsets.UTF_8));
-        byte[] bHash = sha256((b != null ? b : "").getBytes(StandardCharsets.UTF_8));
-        return MessageDigest.isEqual(aHash, bHash);
-    }
-
-    private static byte[] sha256(byte[] input) {
-        try {
-            return MessageDigest.getInstance("SHA-256").digest(input);
-        } catch (java.security.NoSuchAlgorithmException e) {
-            // SHA-256 is mandated by the Java spec — this can never happen
-            throw new IllegalStateException("SHA-256 nicht verfügbar", e);
-        }
+        return ConstantTime.equals(a, b);
     }
 
     // Package-private (and static) for unit testing in PdfControllerFilenameTest.

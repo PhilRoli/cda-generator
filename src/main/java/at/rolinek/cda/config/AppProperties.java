@@ -12,6 +12,8 @@ public class AppProperties {
     private float watermarkOpacity = 0.17f;
     private String adminToken = "";
     private String cleanPdfPassword = "";
+    /** Maximum stored size of one scenario's JSON state in UTF-8 bytes (default 1 MiB). */
+    private long maxScenarioBytes = 1_048_576L;
     private final Pdf pdf = new Pdf();
     private final Backup backup = new Backup();
 
@@ -77,6 +79,14 @@ public class AppProperties {
 
     public void setCleanPdfPassword(String cleanPdfPassword) {
         this.cleanPdfPassword = cleanPdfPassword;
+    }
+
+    public long getMaxScenarioBytes() {
+        return maxScenarioBytes;
+    }
+
+    public void setMaxScenarioBytes(long maxScenarioBytes) {
+        this.maxScenarioBytes = maxScenarioBytes;
     }
 
     public Pdf getPdf() {

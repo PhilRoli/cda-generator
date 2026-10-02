@@ -1,12 +1,14 @@
 package at.rolinek.cda.scenario;
 
 import at.rolinek.cda.config.AppProperties;
+import at.rolinek.cda.security.ConstantTime;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -20,11 +22,13 @@ public class ScenarioService {
     private final ScenarioRepository repository;
     private final ObjectMapper objectMapper;
     private final String adminToken;
+    private final long maxScenarioBytes;
 
     public ScenarioService(ScenarioRepository repository, ObjectMapper objectMapper, AppProperties properties) {
         this.repository = repository;
         this.objectMapper = objectMapper;
         this.adminToken = properties.getAdminToken() == null ? "" : properties.getAdminToken().trim();
+        this.maxScenarioBytes = properties.getMaxScenarioBytes();
     }
 
     public List<ScenarioRecord> listByUsername(String username) {
@@ -69,6 +73,10 @@ public class ScenarioService {
             payload = objectMapper.writeValueAsString(request.state());
         } catch (Exception ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ungültiger Szenario-Inhalt.");
+        }
+        // Scenarios are stored (and backed up) indefinitely, so cap each one.
+        if (payload.getBytes(StandardCharsets.UTF_8).length > maxScenarioBytes) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Szenario ist zu groß.");
         }
 
         if (request.id() == null || request.id().isBlank()) {
@@ -160,7 +168,7 @@ public class ScenarioService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin-Funktion ist nicht konfiguriert.");
         }
         String provided = extractBearerToken(bearerToken);
-        if (!adminToken.equals(provided)) {
+        if (!ConstantTime.equals(provided, adminToken)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Ungültiger Admin-Token.");
         }
     }
