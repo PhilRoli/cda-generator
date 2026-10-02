@@ -97,6 +97,27 @@ class PdfGenerationBoundsTest {
         }
     }
 
+    @Test
+    void xmlSafetyParse_runsInsideTheGate() throws Exception {
+        // The DOM parse in XmlSafetyGuard holds the whole document in heap, so it must be
+        // bounded by the gate too — otherwise parallel requests each build a large DOM.
+        // With the gate saturated, even XML the guard would reject must be turned away
+        // with 503 before it is parsed.
+        AppProperties props = props();
+        props.getPdf().setAcquireTimeoutSeconds(1);
+        PdfGenerationService svc = service(props);
+
+        Semaphore gate = readGate(svc);
+        gate.acquire();
+        try {
+            assertThatThrownBy(() -> svc.generatePdfClean("<!DOCTYPE x []><x/>"))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                    ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+        } finally {
+            gate.release();
+        }
+    }
+
     private Semaphore readGate(PdfGenerationService svc) throws Exception {
         Field f = PdfGenerationService.class.getDeclaredField("conversionGate");
         f.setAccessible(true);

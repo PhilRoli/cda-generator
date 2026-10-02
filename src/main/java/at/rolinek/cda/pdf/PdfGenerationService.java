@@ -16,6 +16,7 @@ import org.apache.pdfbox.pdmodel.graphics.state.PDExtendedGraphicsState;
 import org.apache.pdfbox.util.Matrix;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -39,6 +40,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 
 /**
  * Converts CDA XML to PDF by calling the ELGA CDA2PDF library in-process.
@@ -112,22 +114,28 @@ public class PdfGenerationService {
     private final Semaphore conversionGate;
 
     /**
-     * Runs the actual conversion on a single dedicated thread. The single thread enforces
-     * serialisation at the executor level too: even if a hung conversion is left running
-     * (it may ignore interruption), the next admitted task simply queues behind it on the
-     * same thread — two conversions can never overlap.
+     * Runs the actual conversion on a single dedicated thread, which serialises conversions
+     * at the executor level too. A conversion that hangs past the timeout (the ELGA library
+     * may ignore interruption) is abandoned together with its executor and converter — see
+     * {@link #abandonStuckConversion} — so later requests don't queue behind it forever.
      */
-    private final ExecutorService conversionExecutor =
-        Executors.newSingleThreadExecutor(r -> {
-            Thread t = new Thread(r, "pdf-conversion");
-            t.setDaemon(true);
-            return t;
-        });
+    private volatile ExecutorService conversionExecutor = newConversionExecutor();
 
-    /** Lazily initialised, cached reflection handles for the ELGA converter. */
-    private volatile ElgaConverter elgaConverter;
+    /** Creates the converter on first use; the ELGA reflection loader in production. */
+    private final Supplier<Converter> converterFactory;
 
+    /** Lazily initialised, cached converter (ELGA reflection handles in production). */
+    private volatile Converter elgaConverter;
+
+    @Autowired
     public PdfGenerationService(AppProperties properties, XmlSafetyGuard xmlSafetyGuard) {
+        this(properties, xmlSafetyGuard, null);
+    }
+
+    /** Package-private so tests can substitute the jar-dependent ELGA converter. */
+    PdfGenerationService(AppProperties properties, XmlSafetyGuard xmlSafetyGuard,
+                         Supplier<Converter> converterFactory) {
+        this.converterFactory = converterFactory != null ? converterFactory : this::createElgaConverter;
         this.elgaLibDir = Path.of(properties.getElgaLibDir()).toAbsolutePath().normalize();
         this.watermarkText = properties.getWatermarkText();
         this.watermarkOpacity = properties.getWatermarkOpacity();
@@ -147,7 +155,6 @@ public class PdfGenerationService {
 
     public byte[] generatePdf(String xmlContent) {
         requireWithinSizeLimit(xmlContent);
-        xmlSafetyGuard.requireSafe(xmlContent);
         try {
             byte[] pdf = convert(xmlContent, Variant.UEBUNG);
             return applyWatermark(pdf);
@@ -161,7 +168,6 @@ public class PdfGenerationService {
 
     public byte[] generatePdfClean(String xmlContent) {
         requireWithinSizeLimit(xmlContent);
-        xmlSafetyGuard.requireSafe(xmlContent);
         try {
             return convert(xmlContent, Variant.CLEAN);
         } catch (ResponseStatusException ex) {
@@ -172,7 +178,12 @@ public class PdfGenerationService {
         }
     }
 
-    private enum Variant { UEBUNG, CLEAN }
+    enum Variant { UEBUNG, CLEAN }
+
+    /** A single CDA-to-PDF conversion. Only ever invoked on the single conversion thread. */
+    interface Converter {
+        byte[] convert(byte[] xmlBytes, Variant variant) throws Exception;
+    }
 
     /**
      * Rejects oversized XML before any heavy work. Spring's default JSON body size is large,
@@ -211,10 +222,13 @@ public class PdfGenerationService {
         }
 
         try {
-            ElgaConverter converter = getElgaConverter();
-            Future<byte[]> future =
-                conversionExecutor.submit(() -> converter.convert(xmlBytes, variant));
-            byte[] pdf = awaitConversion(future, variant);
+            // The safety check builds a full DOM, so it runs inside the gate: parallel
+            // requests must not each hold a multi-MB document in heap.
+            xmlSafetyGuard.requireSafe(xmlContent);
+            Converter converter = getElgaConverter();
+            ExecutorService executor = conversionExecutor;
+            Future<byte[]> future = executor.submit(() -> converter.convert(xmlBytes, variant));
+            byte[] pdf = awaitConversion(future, executor, variant);
             if (pdf == null || pdf.length == 0) {
                 LOG.error("ELGA-Konvertierung lieferte kein PDF (Variante {})", variant);
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PDF-Erstellung fehlgeschlagen.");
@@ -222,22 +236,21 @@ public class PdfGenerationService {
             return pdf;
         } finally {
             // Release in finally so a timed-out request (or a converter-init failure) never
-            // leaks a permit. Releasing the permit while a stuck task still occupies the single
-            // executor thread is safe: the executor itself serialises, so a newly admitted
-            // caller's task just queues behind the stuck task on that one thread.
+            // leaks a permit. A stuck task never shares a thread or converter with the next
+            // admitted caller: awaitConversion abandons both on timeout.
             conversionGate.release();
         }
     }
 
-    private byte[] awaitConversion(Future<byte[]> future, Variant variant) throws Exception {
+    private byte[] awaitConversion(Future<byte[]> future, ExecutorService executor, Variant variant)
+            throws Exception {
         try {
             return future.get(conversionTimeoutSeconds, TimeUnit.SECONDS);
         } catch (TimeoutException ex) {
-            // Free the request thread. We cancel(true) to request interruption, but the ELGA
-            // converter may ignore it and keep running on the single executor thread. That is
-            // acceptable: the single-thread executor serialises, so the next admitted task
-            // simply queues behind the stuck one — two conversions can never overlap.
+            // Free the request thread. cancel(true) requests interruption, but the ELGA
+            // converter may ignore it and keep running, so abandon its thread and converter.
             future.cancel(true);
+            abandonStuckConversion(executor);
             LOG.error("Zeitüberschreitung bei der PDF-Erstellung (Variante {}, Limit {}s)",
                 variant, conversionTimeoutSeconds, ex);
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
@@ -256,14 +269,38 @@ public class PdfGenerationService {
         }
     }
 
+    /**
+     * Replaces the executor (and thereby its possibly still-running thread) and drops the
+     * cached converter, so the next conversion runs on a fresh thread with a fresh ELGA
+     * class loader that shares no static state with the stuck one. The abandoned daemon
+     * thread is left to finish (or not) on its own; Java offers no way to kill it.
+     */
+    private synchronized void abandonStuckConversion(ExecutorService stuck) {
+        if (conversionExecutor != stuck) {
+            return; // already replaced by a concurrent timeout
+        }
+        stuck.shutdownNow();
+        conversionExecutor = newConversionExecutor();
+        elgaConverter = null;
+        LOG.warn("Hängende PDF-Konvertierung aufgegeben; neuer Konverter-Thread wird verwendet.");
+    }
+
+    private static ExecutorService newConversionExecutor() {
+        return Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "pdf-conversion");
+            t.setDaemon(true);
+            return t;
+        });
+    }
+
     /** Builds and caches the reflection handles on first use (double-checked locking). */
-    private ElgaConverter getElgaConverter() {
-        ElgaConverter local = elgaConverter;
+    private Converter getElgaConverter() {
+        Converter local = elgaConverter;
         if (local == null) {
             synchronized (this) {
                 local = elgaConverter;
                 if (local == null) {
-                    local = createElgaConverter();
+                    local = converterFactory.get();
                     elgaConverter = local;
                 }
             }
@@ -332,7 +369,7 @@ public class PdfGenerationService {
     }
 
     /** Holds cached reflection metadata for the ELGA converter classes. */
-    private static final class ElgaConverter {
+    private static final class ElgaConverter implements Converter {
         private final ClassLoader loader;
         private final java.lang.reflect.Constructor<?> builderCtor;
         private final java.lang.reflect.Constructor<?> converterCtor;
@@ -353,8 +390,8 @@ public class PdfGenerationService {
             this.xmlToPdfPerXsl = converterClass.getMethod("xmlToPdfPerXsl", InputStream.class);
         }
 
-        /** Performs a single conversion. Only ever invoked on the single conversion thread. */
-        byte[] convert(byte[] xmlBytes, Variant variant) throws Exception {
+        @Override
+        public byte[] convert(byte[] xmlBytes, Variant variant) throws Exception {
             ClassLoader previous = Thread.currentThread().getContextClassLoader();
             Thread.currentThread().setContextClassLoader(loader);
             try {
