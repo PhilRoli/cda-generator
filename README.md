@@ -76,6 +76,17 @@ Setup mit Caddy als Reverse Proxy und Docker Compose.
 
 ### 1. App-Dateien auf den Server bringen
 
+Jeder Push auf `main` deployt automatisch über GitHub Actions (`.github/workflows/deploy.yml`):
+Tests (Maven + bun) → `./deploy.sh` → Healthcheck auf `https://cda.rolinek.at/api/healthz`.
+Manuell auslösbar über *Actions → Deploy → Run workflow*.
+
+Benötigte Secrets im GitHub-Environment `production`:
+
+- `DEPLOY_SSH_PRIVATE_KEY` – eigener Deploy-Key (Public Key in `~deploy/.ssh/authorized_keys` am Server)
+- `DEPLOY_SSH_KNOWN_HOSTS` – Host-Keys des Servers
+
+Fallback lokal:
+
 ```bash
 DEPLOY_REMOTE='deploy@<server-ip>' ./deploy.sh
 ```

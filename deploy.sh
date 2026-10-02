@@ -16,6 +16,10 @@ echo "→ Building dist/"
 echo "→ Syncing files to server"
 rsync -az --delete \
   --exclude='.git/' \
+  --exclude='.github/' \
+  --exclude='.idea/' \
+  --exclude='.claude/' \
+  --exclude='node_modules/' \
   --exclude='.env' \
   --exclude='.DS_Store' \
   --exclude='target/' \

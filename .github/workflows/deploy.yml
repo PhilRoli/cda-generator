@@ -1,0 +1,70 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      # ELGA jars aren't in the repo, so PdfGenerationInProcessTest skips itself here.
+      - run: ./mvnw -B test
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.2"
+      - run: bun test
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          printf '%s\n' \
+            'Host 46.225.72.0' \
+            '  User deploy' \
+            '  IdentityFile ~/.ssh/id_ed25519' \
+            '  StrictHostKeyChecking yes' >> ~/.ssh/config
+          chmod 600 ~/.ssh/config
+
+      # Builds dist/, rsyncs to the server and runs `docker compose up -d --build` there.
+      - name: Deploy
+        env:
+          DEPLOY_REMOTE: deploy@46.225.72.0
+        run: ./deploy.sh
+
+      # The API is briefly unavailable while the rebuilt container starts.
+      - name: Smoke check
+        run: |
+          for i in $(seq 1 12); do
+            if curl -fsS https://cda.rolinek.at/api/healthz; then
+              echo
+              curl -fsS https://cda.rolinek.at/api/version
+              echo
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Health check failed after 60s" >&2
+          exit 1
