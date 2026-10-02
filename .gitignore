@@ -10,3 +10,4 @@ elga-lib/
 .idea/
 dist/
 node_modules/
+.playwright-mcp/
