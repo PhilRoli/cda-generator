@@ -22,7 +22,7 @@ Funktionen:
 
 ## Voraussetzungen
 
-1. Java 21 (für lokale Entwicklung)
+1. Java 25 (für lokale Entwicklung)
 2. ELGA-CDA2PDF-Libraries (nicht im Repo):
    - `CDA2PDF-Demo.jar`
    - `CDA2PDF-API.jar`
