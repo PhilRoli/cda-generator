@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
@@ -68,16 +69,7 @@ public class ScenarioService {
 
         String title = normalizeTitle(request.title());
         String now = OffsetDateTime.now(ZoneOffset.UTC).format(TS);
-        String payload;
-        try {
-            payload = objectMapper.writeValueAsString(request.state());
-        } catch (Exception ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ungültiger Szenario-Inhalt.");
-        }
-        // Scenarios are stored (and backed up) indefinitely, so cap each one.
-        if (payload.getBytes(StandardCharsets.UTF_8).length > maxScenarioBytes) {
-            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Szenario ist zu groß.");
-        }
+        String payload = serializeState(request.state());
 
         if (request.id() == null || request.id().isBlank()) {
             ScenarioRecord created = new ScenarioRecord(
@@ -120,31 +112,39 @@ public class ScenarioService {
         return new ExportResult(exportedAt, entries.size(), entries);
     }
 
+    /**
+     * All-or-nothing: every entry is validated before the first write, and the writes
+     * share one transaction, so a bad entry can't leave a partial import behind.
+     */
+    @Transactional
     public int adminImport(List<ImportEntry> scenarios, String bearerToken) {
         requireAdminToken(bearerToken);
         if (scenarios == null || scenarios.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Keine Szenarien zum Importieren.");
         }
-        for (ImportEntry entry : scenarios) {
-            if (entry == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ungültiger Szenario-Inhalt.");
-            }
-            String payloadJson;
-            try {
-                payloadJson = objectMapper.writeValueAsString(entry.state());
-            } catch (Exception ex) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ungültiger Szenario-Inhalt.");
-            }
-            repository.upsert(new ScenarioRecord(
-                entry.id(),
-                entry.username(),
-                entry.title(),
-                payloadJson,
-                entry.createdAt(),
-                entry.updatedAt()
-            ));
+        List<ScenarioRecord> records = scenarios.stream().map(this::toImportRecord).toList();
+        records.forEach(repository::upsert);
+        return records.size();
+    }
+
+    private ScenarioRecord toImportRecord(ImportEntry entry) {
+        if (entry == null || isBlank(entry.id()) || entry.state() == null || entry.state().isNull()
+                || isBlank(entry.createdAt()) || isBlank(entry.updatedAt())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ungültiger Szenario-Inhalt.");
         }
-        return scenarios.size();
+        String payloadJson = serializeState(entry.state());
+        return new ScenarioRecord(
+            entry.id(),
+            normalizeUsername(entry.username()),
+            normalizeTitle(entry.title()),
+            payloadJson,
+            entry.createdAt(),
+            entry.updatedAt()
+        );
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     public void adminDelete(String id, String bearerToken) {
@@ -195,6 +195,20 @@ public class ScenarioService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Benutzername ist zu lang.");
         }
         return value;
+    }
+
+    private String serializeState(JsonNode state) {
+        String payload;
+        try {
+            payload = objectMapper.writeValueAsString(state);
+        } catch (Exception ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ungültiger Szenario-Inhalt.");
+        }
+        // Scenarios are stored (and backed up) indefinitely, so cap each one.
+        if (payload.getBytes(StandardCharsets.UTF_8).length > maxScenarioBytes) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Szenario ist zu groß.");
+        }
+        return payload;
     }
 
     private String normalizeTitle(String title) {

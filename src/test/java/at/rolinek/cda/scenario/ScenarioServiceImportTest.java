@@ -15,7 +15,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 class ScenarioServiceImportTest {
 
@@ -125,6 +127,44 @@ class ScenarioServiceImportTest {
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
+
+    // -----------------------------------------------------------------------
+    // adminImport – all-or-nothing validation
+    // -----------------------------------------------------------------------
+
+    @org.junit.jupiter.params.ParameterizedTest(name = "{0}")
+    @org.junit.jupiter.params.provider.MethodSource("invalidEntries")
+    void adminImport_invalidEntryAnywhere_rejectsWholeImportBeforeWriting(
+            String reason, ScenarioService.ImportEntry invalid) {
+        // A bad entry used to hit a NOT NULL constraint mid-loop: earlier entries were
+        // already written and the request ended in a generic 500 (partial import).
+        List<ScenarioService.ImportEntry> entries = new java.util.ArrayList<>(sampleEntries(2));
+        entries.add(invalid);
+
+        assertThatThrownBy(() -> service.adminImport(entries, "Bearer secret"))
+            .isInstanceOfSatisfying(ResponseStatusException.class,
+                ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+        verify(repository, never()).upsert(any());
+    }
+
+    static java.util.stream.Stream<org.junit.jupiter.params.provider.Arguments> invalidEntries() {
+        com.fasterxml.jackson.databind.node.ObjectNode state = new ObjectMapper().createObjectNode();
+        String ts = "2026-01-01T00:00:00Z";
+        return java.util.stream.Stream.of(
+            org.junit.jupiter.params.provider.Arguments.of("blank id",
+                new ScenarioService.ImportEntry(" ", "user", "T", state, ts, ts)),
+            org.junit.jupiter.params.provider.Arguments.of("missing username",
+                new ScenarioService.ImportEntry("x", null, "T", state, ts, ts)),
+            org.junit.jupiter.params.provider.Arguments.of("username too long",
+                new ScenarioService.ImportEntry("x", "u".repeat(65), "T", state, ts, ts)),
+            org.junit.jupiter.params.provider.Arguments.of("missing state",
+                new ScenarioService.ImportEntry("x", "user", "T", null, ts, ts)),
+            org.junit.jupiter.params.provider.Arguments.of("missing createdAt",
+                new ScenarioService.ImportEntry("x", "user", "T", state, null, ts)),
+            org.junit.jupiter.params.provider.Arguments.of("missing updatedAt",
+                new ScenarioService.ImportEntry("x", "user", "T", state, ts, " "))
+        );
+    }
 
     private List<ScenarioService.ImportEntry> sampleEntries() {
         return sampleEntries(1);
