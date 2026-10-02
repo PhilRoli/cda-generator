@@ -5,8 +5,10 @@ import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -66,6 +68,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorBody> handleMethodNotSupported() {
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(new ErrorBody("Methode nicht erlaubt."));
+    }
+
+    /**
+     * A client Accept header the app can't satisfy (e.g. a probe requesting XML).
+     * This typically surfaces as a *second* failure while Spring tries to write the
+     * JSON body of another handler's response (see {@link #handleNoResource()}), so
+     * the content type is set explicitly here — an explicit Content-Type bypasses
+     * Spring's Accept-header negotiation instead of re-triggering the same failure.
+     */
+    @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
+    public ResponseEntity<ErrorBody> handleNotAcceptable() {
+        return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new ErrorBody("Nicht akzeptabel."));
     }
 
     @ExceptionHandler(Exception.class)

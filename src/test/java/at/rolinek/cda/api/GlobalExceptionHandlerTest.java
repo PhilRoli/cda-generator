@@ -81,6 +81,22 @@ class GlobalExceptionHandlerTest {
             .andExpect(jsonPath("$.message").value("Nicht gefunden."));
     }
 
+    // --- Accept header the app can't satisfy → 406 (not swallowed into a 500 + stack trace) ---
+
+    @Test
+    void notAcceptableHeader_returns406WithSafeMessage() throws Exception {
+        // /api/scenarios/all only ever produces JSON. A client asking for a media type
+        // it can't produce (e.g. PDF) makes Spring fail while writing the response body,
+        // raising HttpMediaTypeNotAcceptableException. In production this was falling
+        // through to the catch-all handler's LOG.error("Unhandled exception", ex) stack
+        // trace instead of surfacing as a clean, unlogged 406.
+        org.mockito.BDDMockito.given(scenarioService.listAll()).willReturn(java.util.List.of());
+
+        mvc.perform(get("/api/scenarios/all").accept(MediaType.APPLICATION_PDF))
+            .andExpect(status().isNotAcceptable())
+            .andExpect(jsonPath("$.message").value("Nicht akzeptabel."));
+    }
+
     // --- Wrong HTTP method → 405 (not swallowed into a 500 + "Unhandled exception" log) ---
 
     @Test
