@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="de-AT">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>CDA-Übung · Admin</title>
+        <link rel="icon" href="assets/favicon.png" />
+        <link rel="stylesheet" href="css/form.css" />
+        <link rel="stylesheet" href="css/admin.css" />
+    </head>
+    <body>
+        <header class="admin-header">
+            <h1>CDA-Übung · Admin</h1>
+            <div class="admin-period" role="group" aria-label="Zeitraum">
+                <button class="btn" data-days="7">7 T</button>
+                <button class="btn active" data-days="30" aria-pressed="true">30 T</button>
+                <button class="btn" data-days="90">90 T</button>
+                <button class="btn" data-days="365">1 J</button>
+            </div>
+            <a class="btn" href="index.html">Zur App ↗</a>
+        </header>
+        <nav class="admin-tabs" role="tablist">
+            <button role="tab" data-tab="statistik" aria-selected="true">Statistik</button>
+            <button role="tab" data-tab="szenarien" aria-selected="false">Szenarien</button>
+            <button role="tab" data-tab="daten" aria-selected="false">Daten</button>
+        </nav>
+        <main class="admin-main">
+            <section data-panel="statistik" role="tabpanel"></section>
+            <section data-panel="szenarien" role="tabpanel" hidden></section>
+            <section data-panel="daten" role="tabpanel" hidden></section>
+        </main>
+
+        <div id="toast-container" aria-live="polite" aria-atomic="false"></div>
+
+        <dialog id="admin-token-dialog" class="panel-dialog" aria-labelledby="admin-token-title">
+            <form method="dialog">
+                <div class="panel-dialog-header"><h2 id="admin-token-title">Admin-Token</h2></div>
+                <div class="scenario-row">
+                    <label>
+                        <span class="label-text">Admin-Token</span>
+                        <input type="password" id="admin-token-input" autocomplete="off" required />
+                    </label>
+                </div>
+                <div class="scenario-row">
+                    <button class="btn" value="cancel" formnovalidate>Abbrechen</button>
+                    <button class="btn primary" value="ok">Bestätigen</button>
+                </div>
+            </form>
+        </dialog>
+
+        <dialog id="scenario-json-dialog" class="panel-dialog" aria-labelledby="scenario-json-title">
+            <div class="panel-dialog-header">
+                <h2 id="scenario-json-title">Szenario</h2>
+                <button class="dialog-close-btn" id="scenario-json-close" aria-label="Schließen">✕</button>
+            </div>
+            <pre id="scenario-json-body" class="json-view"></pre>
+        </dialog>
+
+        <script type="module" src="js/admin/app.js"></script>
+    </body>
+</html>
