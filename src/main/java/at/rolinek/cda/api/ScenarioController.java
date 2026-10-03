@@ -3,6 +3,9 @@ package at.rolinek.cda.api;
 import at.rolinek.cda.security.LogSafe;
 import at.rolinek.cda.scenario.ScenarioRecord;
 import at.rolinek.cda.scenario.ScenarioService;
+import at.rolinek.cda.usage.UsageRecorder;
+import at.rolinek.cda.usage.UsageRecordingFilter;
+import at.rolinek.cda.usage.UsageType;
 import tools.jackson.databind.JsonNode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotBlank;
@@ -29,9 +32,11 @@ public class ScenarioController {
     private static final Logger LOG = LoggerFactory.getLogger(ScenarioController.class);
 
     private final ScenarioService scenarioService;
+    private final UsageRecorder usageRecorder;
 
-    public ScenarioController(ScenarioService scenarioService) {
+    public ScenarioController(ScenarioService scenarioService, UsageRecorder usageRecorder) {
         this.scenarioService = scenarioService;
+        this.usageRecorder = usageRecorder;
     }
 
     @GetMapping("/scenarios")
@@ -52,6 +57,7 @@ public class ScenarioController {
     public ScenarioDetailResponse get(
             @PathVariable String id,
         @RequestParam(value = "username", required = false) String username,
+        @RequestHeader(name = UsageRecordingFilter.USER_HEADER, required = false) String headerUser,
         HttpServletRequest httpRequest
     ) {
         boolean isPublic = (username == null || username.isBlank());
@@ -59,6 +65,7 @@ public class ScenarioController {
             ? scenarioService.getByIdPublic(id)
             : scenarioService.getByIdForUser(id, username);
         LOG.info("event=scenario_loaded ip={} id={} public={}", ClientIp.from(httpRequest), LogSafe.of(id), isPublic);
+        usageRecorder.record(UsageType.SCENARIO_LOAD, 200, isPublic ? headerUser : username, httpRequest, record.id());
         return ScenarioDetailResponse.from(record, scenarioService.payloadToJson(record));
     }
 
@@ -69,6 +76,7 @@ public class ScenarioController {
             new ScenarioService.ScenarioSaveRequest(body.id(), body.username(), body.title(), body.state())
         );
         LOG.info("event=scenario_saved ip={} user={} id={} title={} action={}", ClientIp.from(httpRequest), LogSafe.of(saved.username()), LogSafe.of(saved.id()), LogSafe.of(saved.title()), action);
+        usageRecorder.record(UsageType.SCENARIO_SAVE, 200, saved.username(), httpRequest, saved.id());
         return ScenarioSummaryResponse.from(saved);
     }
 

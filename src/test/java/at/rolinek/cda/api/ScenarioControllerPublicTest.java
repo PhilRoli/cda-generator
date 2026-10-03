@@ -15,6 +15,8 @@ import java.util.List;
 
 import static org.mockito.BDDMockito.given;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -75,5 +77,18 @@ class ScenarioControllerPublicTest {
         mvc.perform(get("/api/scenarios/missing"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.message").value("Szenario nicht gefunden."));
+    }
+
+    @Test
+    void publicLoadIsRecordedWithHeaderUser() throws Exception {
+        given(scenarioService.getByIdPublic("s1")).willReturn(
+            new at.rolinek.cda.scenario.ScenarioRecord("s1", "anna", "T", "{}", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z"));
+        given(scenarioService.payloadToJson(any())).willReturn(new tools.jackson.databind.ObjectMapper().createObjectNode());
+
+        mvc.perform(get("/api/scenarios/s1").header("X-Cda-User", "philipp"))
+            .andExpect(status().isOk());
+
+        verify(usageRecorder).record(eq(at.rolinek.cda.usage.UsageType.SCENARIO_LOAD), eq(200),
+            eq("philipp"), any(), eq("s1"));
     }
 }
