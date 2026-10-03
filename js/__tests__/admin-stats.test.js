@@ -6,6 +6,9 @@ describe('delta', () => {
         expect(delta(112, 100)).toEqual({ text: '+12 %', worse: false });
         expect(delta(96, 100)).toEqual({ text: '−4 %', worse: false });
     });
+    test('unchanged value is ±0 %', () => {
+        expect(delta(100, 100)).toEqual({ text: '±0 %', worse: false });
+    });
     test('no previous data', () => {
         expect(delta(5, 0)).toEqual({ text: 'neu', worse: false });
         expect(delta(0, 0)).toEqual({ text: '±0', worse: false });
@@ -28,6 +31,31 @@ describe('kpis', () => {
     test('more failures than before is marked worse', () => {
         expect(kpis(summary)[3].value).toBe(7);
         expect(kpis(summary)[3].delta.worse).toBe(true);
+        expect(kpis(summary)[3].delta.text).toBe('+250 %');
+    });
+
+    const withFailures = (now, before) => ({
+        current: { ...summary.current, pdf: t(10, now), clean_pdf: t(30, 0) },
+        previous: { ...summary.previous, pdf: t(10, before) },
+    });
+
+    test('fewer or equal failures are not worse', () => {
+        const fewer = kpis(withFailures(1, 4))[3];
+        expect(fewer.delta).toEqual({ text: '−75 %', worse: false });
+        const same = kpis(withFailures(3, 3))[3];
+        expect(same.delta).toEqual({ text: '±0 %', worse: false });
+    });
+
+    test('first failures after a clean period are worse and "neu"', () => {
+        expect(kpis(withFailures(2, 0))[3].delta).toEqual({ text: 'neu', worse: true });
+    });
+
+    test('zero attempts gives a 0,0 % failure rate', () => {
+        const z = { ok: 0, failed: 0 };
+        const empty = { pdf: z, clean_pdf: z, xml_download: z, scenario_save: z, scenario_load: z };
+        const tile = kpis({ current: empty, previous: empty })[3];
+        expect(tile.label).toBe('Fehler (0,0 %)');
+        expect(tile.delta).toEqual({ text: '±0', worse: false });
     });
 });
 
