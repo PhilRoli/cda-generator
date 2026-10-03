@@ -1,7 +1,7 @@
 package at.rolinek.cda.scenario;
 
 import at.rolinek.cda.config.AppProperties;
-import at.rolinek.cda.security.ConstantTime;
+import at.rolinek.cda.security.AdminTokenGuard;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
@@ -22,13 +22,14 @@ public class ScenarioService {
 
     private final ScenarioRepository repository;
     private final ObjectMapper objectMapper;
-    private final String adminToken;
+    private final AdminTokenGuard adminTokenGuard;
     private final long maxScenarioBytes;
 
-    public ScenarioService(ScenarioRepository repository, ObjectMapper objectMapper, AppProperties properties) {
+    public ScenarioService(ScenarioRepository repository, ObjectMapper objectMapper, AppProperties properties,
+                           AdminTokenGuard adminTokenGuard) {
         this.repository = repository;
         this.objectMapper = objectMapper;
-        this.adminToken = properties.getAdminToken() == null ? "" : properties.getAdminToken().trim();
+        this.adminTokenGuard = adminTokenGuard;
         this.maxScenarioBytes = properties.getMaxScenarioBytes();
     }
 
@@ -38,7 +39,7 @@ public class ScenarioService {
     }
 
     public List<ScenarioRecord> listAllForAdmin(String bearerToken) {
-        requireAdminToken(bearerToken);
+        adminTokenGuard.require(bearerToken);
         return listAll();
     }
 
@@ -103,7 +104,7 @@ public class ScenarioService {
     }
 
     public ExportResult exportAll(String bearerToken) {
-        requireAdminToken(bearerToken);
+        adminTokenGuard.require(bearerToken);
         List<ScenarioRecord> records = repository.listAll();
         String exportedAt = OffsetDateTime.now(ZoneOffset.UTC).format(TS);
         List<ExportEntry> entries = records.stream()
@@ -118,7 +119,7 @@ public class ScenarioService {
      */
     @Transactional
     public int adminImport(List<ImportEntry> scenarios, String bearerToken) {
-        requireAdminToken(bearerToken);
+        adminTokenGuard.require(bearerToken);
         if (scenarios == null || scenarios.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Keine Szenarien zum Importieren.");
         }
@@ -148,7 +149,7 @@ public class ScenarioService {
     }
 
     public void adminDelete(String id, String bearerToken) {
-        requireAdminToken(bearerToken);
+        adminTokenGuard.require(bearerToken);
         int deleted = repository.deleteById(id);
         if (deleted == 0) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Szenario nicht gefunden.");
@@ -161,26 +162,6 @@ public class ScenarioService {
         } catch (Exception ex) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Szenario-Daten sind beschädigt.");
         }
-    }
-
-    private void requireAdminToken(String bearerToken) {
-        if (adminToken.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin-Funktion ist nicht konfiguriert.");
-        }
-        String provided = extractBearerToken(bearerToken);
-        if (!ConstantTime.equals(provided, adminToken)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Ungültiger Admin-Token.");
-        }
-    }
-
-    private String extractBearerToken(String header) {
-        if (header == null) {
-            return null;
-        }
-        if (!header.startsWith("Bearer ")) {
-            return null;
-        }
-        return header.substring("Bearer ".length()).trim();
     }
 
     private String normalizeUsername(String username) {
