@@ -49,6 +49,15 @@ class GlobalExceptionHandlerTest {
             .andExpect(jsonPath("$.message").value("Szenario nicht gefunden."));
     }
 
+    @Test
+    void unsupportedContentType_returns415WithSafeMessage() throws Exception {
+        mvc.perform(post("/api/scenarios")
+                .contentType(MediaType.TEXT_PLAIN)
+                .content("hello"))
+            .andExpect(status().isUnsupportedMediaType())
+            .andExpect(jsonPath("$.message").value("Nicht unterstützter Inhaltstyp."));
+    }
+
     // --- Malformed JSON body → 400 with safe message (no raw exception detail) ---
 
     @Test

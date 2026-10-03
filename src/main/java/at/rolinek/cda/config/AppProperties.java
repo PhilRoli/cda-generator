@@ -189,7 +189,7 @@ public class AppProperties {
 
     /** Usage statistics tunables. */
     public static class Usage {
-        /** Days detailed events (with username / IP prefix) are kept before being folded into daily totals. */
+        /** Days (min. 1, so today's events are never deleted) detailed events (with username / IP prefix) are kept before being folded into daily totals. */
         private int retentionDays = 90;
 
         public int getRetentionDays() {
@@ -197,7 +197,7 @@ public class AppProperties {
         }
 
         public void setRetentionDays(int retentionDays) {
-            this.retentionDays = retentionDays;
+            this.retentionDays = Math.max(1, retentionDays);
         }
     }
 }
