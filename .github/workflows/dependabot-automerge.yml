@@ -1,14 +1,17 @@
 name: Dependabot auto-merge
 
-on: pull_request
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
 
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 jobs:
   auto-merge:
-    if: github.actor == 'dependabot[bot]'
+    if: github.actor == 'dependabot[bot]' && github.event.action != 'closed'
     runs-on: ubuntu-latest
     steps:
       - id: meta
@@ -19,4 +22,16 @@ jobs:
         run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Merges made with GITHUB_TOKEN don't trigger push workflows, so start the deploy explicitly.
+  deploy-after-merge:
+    if: >-
+      github.event.action == 'closed' && github.event.pull_request.merged == true
+      && github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref "$BASE_REF"
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
