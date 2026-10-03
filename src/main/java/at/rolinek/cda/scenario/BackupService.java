@@ -50,6 +50,33 @@ public class BackupService {
         }
     }
 
+    public record BackupStatus(String file, String writtenAt, int count) {}
+
+    /** Newest backup in the configured directory, or an empty status if there is none. */
+    public BackupStatus latestBackup() {
+        Path dir = Path.of(properties.getBackup().getDir()).toAbsolutePath().normalize();
+        if (!Files.isDirectory(dir)) {
+            return new BackupStatus(null, null, 0);
+        }
+        try (Stream<Path> stream = Files.list(dir)) {
+            return stream
+                .filter(p -> p.getFileName().toString().startsWith("scenarios-") && p.getFileName().toString().endsWith(".json"))
+                .max(Comparator.comparing(p -> p.getFileName().toString()))
+                .map(p -> new BackupStatus(p.getFileName().toString(), lastModified(p), countInBackup(p)))
+                .orElse(new BackupStatus(null, null, 0));
+        } catch (IOException ex) {
+            return new BackupStatus(null, null, 0);
+        }
+    }
+
+    private static String lastModified(Path file) {
+        try {
+            return Files.getLastModifiedTime(file).toInstant().toString();
+        } catch (IOException ex) {
+            return null;
+        }
+    }
+
     private int countInBackup(Path file) {
         try {
             @SuppressWarnings("unchecked")
