@@ -65,7 +65,7 @@ public class ScenarioController {
             ? scenarioService.getByIdPublic(id)
             : scenarioService.getByIdForUser(id, username);
         LOG.info("event=scenario_loaded ip={} id={} public={}", ClientIp.from(httpRequest), LogSafe.of(id), isPublic);
-        usageRecorder.record(UsageType.SCENARIO_LOAD, 200, isPublic ? headerUser : username, httpRequest, record.id());
+        usageRecorder.record(UsageType.SCENARIO_LOAD, 200, isPublic ? UsageRecordingFilter.decodeUser(headerUser) : username, httpRequest, record.id());
         return ScenarioDetailResponse.from(record, scenarioService.payloadToJson(record));
     }
 

@@ -8,6 +8,7 @@ import { getState, replaceState, saveState, defaultState } from './state.js';
 import { renderAllLists, setupListAddButtons, setupQuickAddDropdowns } from './lists.js';
 import { bindInputs, rebindAll, setupPvVisibility, setupSvnrValidation, svnrIsAcceptable, updateSvnrMarking } from './form.js';
 import { setupScenarioManager, getCloudUsername } from './scenario-manager.js';
+import { cloudUserHeader } from './cloud-scenarios.js';
 import { apiJson, apiPdf } from './api.js';
 import { downloadFile, downloadBlob } from './download.js';
 import { report, withButtonBusy } from './ui-feedback.js';
@@ -80,7 +81,7 @@ function setupButtons() {
             try {
                 const pdfBlob = await apiPdf('/api/pdf', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Cda-User': getCloudUsername() },
+                    headers: { 'Content-Type': 'application/json', ...cloudUserHeader(getCloudUsername()) },
                     body: JSON.stringify({ xml, fileName: pdfFilename }),
                 });
                 downloadBlob(pdfFilename, pdfBlob);

@@ -4,6 +4,7 @@
 import { apiJson } from './api.js';
 
 let sessionToken = null;
+let pendingToken = null; // one shared prompt for concurrent callers
 
 export function tokenAwareOptions(options, token) {
     return { ...options, headers: { ...(options.headers || {}), Authorization: `Bearer ${token}` } };
@@ -14,11 +15,13 @@ export function forgetAdminToken() {
 }
 
 function askToken() {
+    if (pendingToken) return pendingToken;
     const dialog = document.getElementById('admin-token-dialog');
     const input = document.getElementById('admin-token-input');
     input.value = '';
-    return new Promise((resolve) => {
+    pendingToken = new Promise((resolve) => {
         dialog.addEventListener('close', () => {
+            pendingToken = null;
             const token = dialog.returnValue === 'ok' ? input.value.trim() : '';
             input.value = '';
             resolve(token || null);
@@ -26,21 +29,23 @@ function askToken() {
         dialog.returnValue = '';
         dialog.showModal();
     });
+    return pendingToken;
 }
 
 /** apiJson for admin endpoints. Rejects with err.cancelled = true if the user cancels the dialog. */
 export async function adminApiJson(url, options = {}) {
-    if (!sessionToken) {
-        const token = await askToken();
-        if (!token) {
+    let token = sessionToken;
+    if (!token) {
+        token = await askToken();
+        if (token) sessionToken = token;
+        else {
             const cancelled = new Error('Abgebrochen.');
             cancelled.cancelled = true;
             throw cancelled;
         }
-        sessionToken = token;
     }
     try {
-        return await apiJson(url, tokenAwareOptions(options, sessionToken));
+        return await apiJson(url, tokenAwareOptions(options, token));
     } catch (err) {
         if (err.status === 403) forgetAdminToken();
         throw err;

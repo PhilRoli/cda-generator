@@ -163,7 +163,7 @@ async function loadCloudScenario() {
         url = `/api/scenarios/${encodeURIComponent(selectedCloudScenarioId)}?username=${encodeURIComponent(username)}`;
     }
 
-    const detail = await apiJson(url, { headers: { 'X-Cda-User': getCloudUsername() } });
+    const detail = await apiJson(url, { headers: cloudUserHeader(getCloudUsername()) });
     replaceState(sanitizeState(detail.state, defaultState()));
     loadedCloudScenario = { id: detail.id, username: detail.username };
     rebindAll();

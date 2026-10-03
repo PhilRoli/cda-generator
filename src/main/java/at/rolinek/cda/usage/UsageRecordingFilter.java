@@ -10,6 +10,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Records every PDF request with its final status. Ordered first so responses produced
@@ -20,6 +22,16 @@ import java.io.IOException;
 public class UsageRecordingFilter extends OncePerRequestFilter {
 
     public static final String USER_HEADER = "X-Cda-User";
+
+    /** The frontend percent-encodes the username (header values must be ASCII); malformed input is kept raw. */
+    public static String decodeUser(String headerValue) {
+        if (headerValue == null) return null;
+        try {
+            return URLDecoder.decode(headerValue, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            return headerValue;
+        }
+    }
 
     private final UsageRecorder recorder;
 
@@ -40,7 +52,7 @@ public class UsageRecordingFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
             status = response.getStatus();
         } finally {
-            recorder.record(typeFor(request), status, request.getHeader(USER_HEADER), request, "");
+            recorder.record(typeFor(request), status, decodeUser(request.getHeader(USER_HEADER)), request, "");
         }
     }
 

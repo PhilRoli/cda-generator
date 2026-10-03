@@ -55,4 +55,13 @@ class UsageRecordingFilterTest {
         }
         verify(recorder).record(eq(UsageType.PDF), eq(500), eq(null), any(), eq(""));
     }
+
+    @Test
+    void decodeUserHandlesPercentEncodingAndMalformedInput() {
+        org.junit.jupiter.api.Assertions.assertEquals("Anna \uD83D\uDE91", UsageRecordingFilter.decodeUser("Anna%20%F0%9F%9A%91"));
+        org.junit.jupiter.api.Assertions.assertEquals("J\u00FCrgen", UsageRecordingFilter.decodeUser("J%C3%BCrgen"));
+        org.junit.jupiter.api.Assertions.assertEquals("anna", UsageRecordingFilter.decodeUser("anna"));
+        org.junit.jupiter.api.Assertions.assertEquals("%E0%A4%A", UsageRecordingFilter.decodeUser("%E0%A4%A"));
+        org.junit.jupiter.api.Assertions.assertNull(UsageRecordingFilter.decodeUser(null));
+    }
 }
