@@ -2,10 +2,12 @@
 
 import { initScenariosTab } from './scenarios.js';
 import { initDataTab } from './data.js';
+import { initStatsTab } from './stats.js';
 
 let days = 30;
 
 const panels = {
+    statistik: initStatsTab(document.querySelector('[data-panel="statistik"]'), () => days),
     szenarien: initScenariosTab(document.querySelector('[data-panel="szenarien"]')),
     daten: initDataTab(document.querySelector('[data-panel="daten"]')),
 };
