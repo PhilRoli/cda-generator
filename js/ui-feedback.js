@@ -1,7 +1,8 @@
 // User feedback: status line, toast notifications and busy buttons.
 
 export function setStatus(msg) {
-    document.getElementById('status').textContent = msg || '';
+    const el = document.getElementById('status');
+    if (el) el.textContent = msg || '';
 }
 
 /** Shows `message` in the status line and as a toast. */

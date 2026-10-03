@@ -17,25 +17,6 @@ let selectedCloudScenarioId = null;
 // The cloud scenario the current form state came from ({ id, username }), if any. Only
 // this one is ever overwritten by a save — see scenarioIdToUpdate().
 let loadedCloudScenario = null;
-// Admin token for this page session only: kept in memory, never written to storage.
-let sessionAdminToken = null;
-
-/** Asks for the admin token in a password dialog; resolves to the token or null. */
-function askAdminToken() {
-    if (sessionAdminToken) return Promise.resolve(sessionAdminToken);
-    const dialog = document.getElementById('admin-token-dialog');
-    const input = document.getElementById('admin-token-input');
-    input.value = '';
-    return new Promise((resolve) => {
-        dialog.addEventListener('close', () => {
-            const token = dialog.returnValue === 'ok' ? input.value.trim() : '';
-            input.value = '';
-            resolve(token || null);
-        }, { once: true });
-        dialog.returnValue = '';
-        dialog.showModal();
-    });
-}
 
 function cloudScenarioTitleSuggestion() {
     const state = getState();
@@ -65,7 +46,7 @@ async function loadLocalScenarioFromFile(file) {
     }
 }
 
-function getCloudUsername() {
+export function getCloudUsername() {
     const input = document.getElementById('cloud-username');
     return input?.value?.trim() || '';
 }
@@ -182,36 +163,11 @@ async function loadCloudScenario() {
         url = `/api/scenarios/${encodeURIComponent(selectedCloudScenarioId)}?username=${encodeURIComponent(username)}`;
     }
 
-    const detail = await apiJson(url);
+    const detail = await apiJson(url, { headers: { 'X-Cda-User': getCloudUsername() } });
     replaceState(sanitizeState(detail.state, defaultState()));
     loadedCloudScenario = { id: detail.id, username: detail.username };
     rebindAll();
     report(`Cloud-Szenario geladen: ${detail.title}`, 'success');
-}
-
-async function deleteCloudScenarioAsAdmin() {
-    if (!selectedCloudScenarioId) {
-        report('Bitte zuerst ein Cloud-Szenario auswählen.', 'info');
-        return;
-    }
-    const token = await askAdminToken();
-    if (!token) return;
-    if (!confirm('Ausgewähltes Cloud-Szenario als Admin löschen?')) return;
-
-    try {
-        await apiJson(`/api/admin/scenarios/${encodeURIComponent(selectedCloudScenarioId)}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` },
-        });
-    } catch (err) {
-        if (err.status === 403) sessionAdminToken = null; // wrong token: ask again next time
-        throw err;
-    }
-    sessionAdminToken = token;
-    if (loadedCloudScenario?.id === selectedCloudScenarioId) loadedCloudScenario = null;
-    selectedCloudScenarioId = null;
-    await refreshCloudScenarios();
-    report('Cloud-Szenario per Admin-Recht gelöscht.', 'success');
 }
 
 function updateScenarioSourceVisibility() {
@@ -286,13 +242,6 @@ export function setupScenarioManager() {
             await loadCloudScenario();
         } catch (err) {
             report(`Cloud-Laden fehlgeschlagen: ${err.message}`, 'error');
-        }
-    });
-    document.getElementById('btn-cloud-delete-admin').addEventListener('click', async () => {
-        try {
-            await deleteCloudScenarioAsAdmin();
-        } catch (err) {
-            report(`Admin-Löschen fehlgeschlagen: ${err.message}`, 'error');
         }
     });
 
