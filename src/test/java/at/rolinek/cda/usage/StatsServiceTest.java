@@ -141,6 +141,38 @@ class StatsServiceTest {
     }
 
     @Test
+    void detailQueriesAreClampedToTheRetentionWindow() {
+        add("2026-06-30T10:00:00Z", UsageType.PDF, true, "alt", "", "");   // day before the window
+        add("2026-07-06T00:00:00Z", UsageType.PDF, true, "neu", "", "");   // first day inside the window
+        add("2026-06-30T10:00:00Z", UsageType.PDF, false, "alt", "", "old_failure");
+        add("2026-07-06T00:00:00Z", UsageType.PDF, false, "neu", "", "new_failure");
+
+        StatsService.Users u = stats.users(365);
+        StatsService.Failures f = stats.failures(365);
+
+        assertThat(u.detailWindowDays()).isEqualTo(90);
+        assertThat(u.users()).extracting(StatsService.UserRow::who).containsExactly("neu");
+        assertThat(f.recent()).extracting(StatsService.FailureRow::reason).containsExactly("new_failure");
+        assertThat(f.groups()).extracting(StatsService.FailureGroup::reason).containsExactly("new_failure");
+    }
+
+    @Test
+    void timelineUnionsDetailedEventsAndRolledUpTotals() {
+        jdbc.update("INSERT INTO usage_daily(day, type, outcome, count) VALUES ('2026-09-22','pdf','ok',4)");
+        jdbc.update("INSERT INTO usage_daily(day, type, outcome, count) VALUES ('2026-09-10','pdf','failed',2)");
+        add("2026-09-22T10:00:00Z", UsageType.PDF, true, "anna", "", "");
+        add("2026-09-30T10:00:00Z", UsageType.PDF, true, "anna", "", "");
+
+        StatsService.Timeline t = stats.timeline(30);
+        java.util.Map<String, StatsService.Day> byDay = new java.util.HashMap<>();
+        t.entries().forEach(d -> byDay.put(d.day(), d));
+
+        assertThat(byDay.get("2026-09-22").ok().get("pdf")).isEqualTo(5L);
+        assertThat(byDay.get("2026-09-30").ok().get("pdf")).isEqualTo(1L);
+        assertThat(byDay.get("2026-09-10").failed()).isEqualTo(2L);
+    }
+
+    @Test
     void emptyDatabaseYieldsZerosNotErrors() {
         assertThat(stats.summary(30).current().get("pdf")).isEqualTo(new StatsService.Totals(0, 0));
         assertThat(stats.timeline(30).entries()).hasSize(30);
