@@ -5,6 +5,8 @@ import { apiJson } from './api.js';
 
 let sessionToken = null;
 let pendingToken = null; // one shared prompt for concurrent callers
+let confirmed = false;   // sessionToken has been accepted by the server at least once
+let probe = null;        // the single in-flight request that verifies a fresh token
 
 export function tokenAwareOptions(options, token) {
     return { ...options, headers: { ...(options.headers || {}), Authorization: `Bearer ${token}` } };
@@ -12,6 +14,7 @@ export function tokenAwareOptions(options, token) {
 
 export function forgetAdminToken() {
     sessionToken = null;
+    confirmed = false;
 }
 
 function askToken() {
@@ -32,22 +35,49 @@ function askToken() {
     return pendingToken;
 }
 
-/** apiJson for admin endpoints. Rejects with err.cancelled = true if the user cancels the dialog. */
+/**
+ * apiJson for admin endpoints. Rejects with err.cancelled = true if the user cancels the dialog.
+ *
+ * A freshly entered token is unverified, and every 403 counts toward the server's auth-failure
+ * throttle. So the first request after a prompt is sent alone; concurrent callers wait for its
+ * outcome and then re-evaluate: token confirmed -> proceed in parallel, token rejected (forgotten)
+ * -> they share one fresh prompt. A confirmed token never serialises requests.
+ */
 export async function adminApiJson(url, options = {}) {
-    let token = sessionToken;
-    if (!token) {
-        token = await askToken();
-        if (token) sessionToken = token;
-        else {
-            const cancelled = new Error('Abgebrochen.');
-            cancelled.cancelled = true;
-            throw cancelled;
+    for (;;) {
+        if (!sessionToken) {
+            const entered = await askToken();
+            if (!entered) {
+                const cancelled = new Error('Abgebrochen.');
+                cancelled.cancelled = true;
+                throw cancelled;
+            }
+            if (!sessionToken) {
+                sessionToken = entered;
+                confirmed = false;
+            }
         }
-    }
-    try {
-        return await apiJson(url, tokenAwareOptions(options, token));
-    } catch (err) {
-        if (err.status === 403) forgetAdminToken();
-        throw err;
+        const token = sessionToken;
+        if (!confirmed && probe) {
+            await probe.catch(() => {});
+            continue;
+        }
+        const request = apiJson(url, tokenAwareOptions(options, token)).then(
+            (result) => {
+                if (sessionToken === token) confirmed = true;
+                return result;
+            },
+            (err) => {
+                if (err.status === 403) forgetAdminToken();
+                throw err;
+            },
+        );
+        if (confirmed) return request;
+        probe = request;
+        try {
+            return await request;
+        } finally {
+            probe = null;
+        }
     }
 }

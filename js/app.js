@@ -208,7 +208,7 @@ function setupXmlUpload() {
                 const pdfBlob = await apiPdf('/api/pdf/upload', {
                     method: 'POST',
                     body: formData,
-                    headers: { 'X-Clean-Pdf-Password': pw },
+                    headers: { 'X-Clean-Pdf-Password': pw, ...cloudUserHeader(getCloudUsername()) },
                 });
                 const pdfFilename = file.name.replace(/\.xml$/i, '.pdf');
                 downloadBlob(pdfFilename, pdfBlob);

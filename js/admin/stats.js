@@ -110,7 +110,9 @@ function note(days, windowDays) {
 const when = (iso) => (iso ? iso.slice(0, 16).replace('T', ' ') : '–');
 
 export function initStatsTab(root, getDays) {
+    let seq = 0;
     const refresh = async () => {
+        const mine = ++seq;
         const days = getDays();
         try {
             const q = `?days=${days}`;
@@ -121,6 +123,7 @@ export function initStatsTab(root, getDays) {
                 adminApiJson(`/api/admin/stats/failures${q}`),
                 adminApiJson(`/api/admin/stats/scenarios${q}`),
             ]);
+            if (mine !== seq) return; // a newer refresh superseded this one
             root.innerHTML = '';
 
             const kpiRow = document.createElement('div');
@@ -152,7 +155,7 @@ export function initStatsTab(root, getDays) {
             const cols = document.createElement('div');
             cols.className = 'admin-two-col';
             const userCard = card('Benutzer');
-            userCard.appendChild(table(['Benutzer', 'PDF', 'Sauber', 'XML', 'Zuletzt'],
+            userCard.appendChild(table(['Benutzer', 'PDF', 'Sauber', 'XML', 'Zuletzt (UTC)'],
                 users.users.map((u) => [u.who, u.ok.pdf, u.ok.clean_pdf, u.ok.xml_download, when(u.lastActivity)]), 1));
             const n1 = note(days, users.detailWindowDays);
             if (n1) userCard.appendChild(n1);
@@ -162,7 +165,7 @@ export function initStatsTab(root, getDays) {
             const recentTitle = document.createElement('h2');
             recentTitle.textContent = 'Letzte Fehler';
             failCard.appendChild(recentTitle);
-            failCard.appendChild(table(['Zeit', 'Art', 'Benutzer', 'Grund', 'Status'],
+            failCard.appendChild(table(['Zeit (UTC)', 'Art', 'Benutzer', 'Grund', 'Status'],
                 failures.recent.map((f) => [when(f.occurredAt), TYPE_NAMES[f.type] || f.type, f.who,
                     REASON_LABELS[f.reason] || f.reason, f.httpStatus ?? '–']), 4));
             cols.append(userCard, failCard);
@@ -180,7 +183,7 @@ export function initStatsTab(root, getDays) {
             scenCols.append(topCard, perUserCard);
             root.appendChild(scenCols);
         } catch (err) {
-            if (!err.cancelled) report(`Statistik konnte nicht geladen werden: ${err.message}`, 'error');
+            if (mine === seq && !err.cancelled) report(`Statistik konnte nicht geladen werden: ${err.message}`, 'error');
         }
     };
     return { refresh };
