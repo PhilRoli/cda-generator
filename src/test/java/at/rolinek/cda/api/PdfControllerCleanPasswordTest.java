@@ -5,6 +5,7 @@ import at.rolinek.cda.pdf.PdfGenerationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import at.rolinek.cda.usage.UsageRecorder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockMultipartFile;
@@ -26,6 +27,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(PdfController.class)
 @Import(GlobalExceptionHandler.class)
 class PdfControllerCleanPasswordTest {
+
+    @MockitoBean
+    UsageRecorder usageRecorder;
 
     private static final MockMultipartFile DUMMY_XML = new MockMultipartFile(
             "file", "test.xml", "application/xml", "<ClinicalDocument/>".getBytes());

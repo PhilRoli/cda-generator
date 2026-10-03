@@ -4,6 +4,7 @@ import at.rolinek.cda.scenario.ScenarioService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import at.rolinek.cda.usage.UsageRecorder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
@@ -26,6 +27,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(ScenarioController.class)
 @Import(GlobalExceptionHandler.class)
 class GlobalExceptionHandlerTest {
+
+    @MockitoBean
+    UsageRecorder usageRecorder;
 
     @Autowired
     MockMvc mvc;
