@@ -141,4 +141,16 @@ class BackupServiceTest {
         // Should not throw
         backupService.pruneOldBackups(missing, 5);
     }
+
+    @Test
+    void latestBackupReportsNewestFileOrEmpty() throws Exception {
+        properties.getBackup().setDir(tempDir.toString());
+        assertThat(backupService.latestBackup().file()).isNull();
+
+        backupService.writeBackup(java.nio.file.Path.of(properties.getBackup().getDir()));
+        BackupService.BackupStatus status = backupService.latestBackup();
+
+        assertThat(status.file()).startsWith("scenarios-").endsWith(".json");
+        assertThat(status.writtenAt()).isNotBlank();
+    }
 }

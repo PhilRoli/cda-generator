@@ -16,3 +16,11 @@ export function scenarioIdToUpdate(loaded, username, { asNew = false } = {}) {
     if (asNew || !loaded) return undefined;
     return loaded.username === username.trim() ? loaded.id : undefined;
 }
+
+/**
+ * Header object attributing a request to the cloud username. HTTP header values must be
+ * ISO-8859-1, so the free-text name is percent-encoded (the server decodes it).
+ */
+export function cloudUserHeader(username) {
+    return { 'X-Cda-User': encodeURIComponent(username) };
+}

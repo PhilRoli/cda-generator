@@ -165,3 +165,40 @@ sudo systemctl reload caddy
 ## Hinweis
 
 Alle generierten Dokumente sind ausschließlich für **Übungszwecke** bestimmt.
+
+## Admin-Bereich (`/admin.html`)
+
+Statistik (PDFs, saubere PDFs, XML-Downloads, Fehler, Benutzer, Szenario-Aktivität),
+Szenario-Verwaltung und Export/Import. Zugriff: Authelia-SSO (Caddy) **und** `APP_ADMIN_TOKEN`.
+
+Nutzungsereignisse speichern den Cloud-Benutzernamen (falls eingegeben) und eine gekürzte IP
+(IPv4 /24, IPv6 /48). Nach `APP_USAGE_RETENTION_DAYS` (Standard 90) werden sie zu anonymen
+Tageswerten zusammengefasst und gelöscht.
+
+Caddy-Block für `cda.rolinek.at`. Der Admin-Block muss **vor** den bestehenden `handle`-Blöcken stehen:
+Caddy wertet `handle`-Blöcke in der Reihenfolge der Datei aus (dieser Matcher wird nicht nach Spezifität
+sortiert), sonst fängt `handle /api/*` die Admin-Aufrufe ab. Das Snippet `(sso)` (Authelia `forward_auth`)
+muss im Caddyfile bereits definiert sein.
+
+```txt
+cda.rolinek.at {
+    @admin path /admin* /api/admin/*
+    handle @admin {
+        import sso
+        @adminApi path /api/admin/*
+        reverse_proxy @adminApi localhost:48718
+        root * /opt/apps/cda-uebung/dist
+        encode gzip
+        header Cache-Control "no-cache"
+        # /admin liefert admin.html
+        try_files {path} {path}.html
+        file_server
+    }
+
+    handle /api/* { ... }   # unverändert
+    handle { ... }          # unverändert (statisches Frontend)
+}
+```
+
+Nach dem Anwenden in einem eingeloggten Browser prüfen, dass `/api/admin/stats/summary` mit dem
+Bearer-Token `200` liefert (manche Authelia-Versionen behandeln einen fremden `Authorization`-Header speziell).

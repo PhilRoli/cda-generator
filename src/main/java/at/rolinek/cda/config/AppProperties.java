@@ -16,6 +16,7 @@ public class AppProperties {
     private long maxScenarioBytes = 1_048_576L;
     private final Pdf pdf = new Pdf();
     private final Backup backup = new Backup();
+    private final Usage usage = new Usage();
 
     public String getVersion() {
         return version;
@@ -95,6 +96,10 @@ public class AppProperties {
 
     public Backup getBackup() {
         return backup;
+    }
+
+    public Usage getUsage() {
+        return usage;
     }
 
     /** Backup-scheduler configuration. */
@@ -179,6 +184,20 @@ public class AppProperties {
 
         public void setMaxXmlBytes(long maxXmlBytes) {
             this.maxXmlBytes = maxXmlBytes;
+        }
+    }
+
+    /** Usage statistics tunables. */
+    public static class Usage {
+        /** Days (min. 1, so today's events are never deleted) detailed events (with username / IP prefix) are kept before being folded into daily totals. */
+        private int retentionDays = 90;
+
+        public int getRetentionDays() {
+            return retentionDays;
+        }
+
+        public void setRetentionDays(int retentionDays) {
+            this.retentionDays = Math.max(1, retentionDays);
         }
     }
 }

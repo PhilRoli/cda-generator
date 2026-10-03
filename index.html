@@ -319,6 +319,7 @@
 
         <footer class="actions">
             <span class="status" id="status"></span>
+            <a class="admin-link" href="admin.html">Admin</a>
             <button class="btn" id="btn-reset">Zurücksetzen</button>
             <button class="btn" id="btn-generate-xml">XML herunterladen</button>
             <button class="btn primary" id="btn-generate">PDF generieren</button>
@@ -365,7 +366,6 @@
                 <div class="scenario-row">
                     <button class="btn" id="btn-cloud-save">In Cloud speichern</button>
                     <button class="btn" id="btn-cloud-save-new">Als neu speichern</button>
-                    <button class="btn danger" id="btn-cloud-delete-admin">Als Admin löschen</button>
                 </div>
                 <div class="scenario-row">
                     <button class="btn" id="btn-cloud-refresh">Cloud-Liste aktualisieren</button>
@@ -397,24 +397,6 @@
             <div class="scenario-row">
                 <button class="btn primary" id="btn-xml-convert" disabled>PDF ohne Wasserzeichen generieren</button>
             </div>
-        </dialog>
-
-        <dialog id="admin-token-dialog" class="panel-dialog" aria-labelledby="admin-token-title">
-            <form method="dialog">
-                <div class="panel-dialog-header">
-                    <h2 id="admin-token-title">Admin-Token</h2>
-                </div>
-                <div class="scenario-row">
-                    <label>
-                        <span class="label-text">Admin-Token</span>
-                        <input type="password" id="admin-token-input" autocomplete="off" required />
-                    </label>
-                </div>
-                <div class="scenario-row">
-                    <button class="btn" value="cancel" formnovalidate>Abbrechen</button>
-                    <button class="btn primary" value="ok">Bestätigen</button>
-                </div>
-            </form>
         </dialog>
 
         <dialog id="changelog-dialog" class="changelog-dialog">

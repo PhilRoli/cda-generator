@@ -8,6 +8,7 @@ rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
 
 cp "$ROOT_DIR/index.html" "$DIST_DIR/"
+cp "$ROOT_DIR/admin.html" "$DIST_DIR/"
 cp -R "$ROOT_DIR/css" "$DIST_DIR/css"
 cp -R "$ROOT_DIR/js" "$DIST_DIR/js"
 rm -rf "$DIST_DIR/js/__tests__"

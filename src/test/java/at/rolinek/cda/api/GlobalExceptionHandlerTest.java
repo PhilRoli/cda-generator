@@ -4,6 +4,7 @@ import at.rolinek.cda.scenario.ScenarioService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import at.rolinek.cda.usage.UsageRecorder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
@@ -27,6 +28,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(GlobalExceptionHandler.class)
 class GlobalExceptionHandlerTest {
 
+    @MockitoBean
+    UsageRecorder usageRecorder;
+
     @Autowired
     MockMvc mvc;
 
@@ -43,6 +47,15 @@ class GlobalExceptionHandlerTest {
         mvc.perform(get("/api/scenarios/x"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.message").value("Szenario nicht gefunden."));
+    }
+
+    @Test
+    void unsupportedContentType_returns415WithSafeMessage() throws Exception {
+        mvc.perform(post("/api/scenarios")
+                .contentType(MediaType.TEXT_PLAIN)
+                .content("hello"))
+            .andExpect(status().isUnsupportedMediaType())
+            .andExpect(jsonPath("$.message").value("Nicht unterstützter Inhaltstyp."));
     }
 
     // --- Malformed JSON body → 400 with safe message (no raw exception detail) ---

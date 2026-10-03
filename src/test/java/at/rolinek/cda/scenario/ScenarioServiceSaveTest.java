@@ -1,6 +1,7 @@
 package at.rolinek.cda.scenario;
 
 import at.rolinek.cda.config.AppProperties;
+import at.rolinek.cda.security.AdminTokenGuard;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,7 +27,7 @@ class ScenarioServiceSaveTest {
         repository = mock(ScenarioRepository.class);
         AppProperties props = new AppProperties();
         props.setMaxScenarioBytes(100);
-        service = new ScenarioService(repository, objectMapper, props);
+        service = new ScenarioService(repository, objectMapper, props, new AdminTokenGuard(props));
     }
 
     private ScenarioService.ScenarioSaveRequest requestWithText(String text) {

@@ -737,3 +737,9 @@ button.btn.danger:focus-visible {
     outline-color: var(--accent-dark);
     box-shadow: 0 0 0 2px #fff inset;
 }
+
+.admin-link {
+    color: var(--muted, #666);
+    font-size: 0.85rem;
+    margin-right: auto;
+}

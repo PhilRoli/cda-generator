@@ -1,0 +1,33 @@
+/* Admin page layout (top tabs). Reuses tokens and controls from form.css. */
+.admin-header { display: flex; align-items: center; gap: 12px; padding: 12px 20px; background: #fff; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.admin-header h1 { font-size: 1.15rem; margin: 0; flex: 1; }
+.admin-period { display: flex; gap: 4px; }
+.admin-period .btn.active { background: var(--accent); border-color: var(--accent-dark); color: #fff; }
+.admin-tabs { display: flex; gap: 4px; padding: 0 20px; background: #fff; border-bottom: 1px solid var(--border); overflow-x: auto; }
+.admin-tabs button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 14px; font: inherit; color: #555; cursor: pointer; }
+.admin-tabs button[aria-selected='true'] { color: var(--accent); border-color: var(--accent); font-weight: 600; }
+.admin-main { max-width: 1100px; margin: 0 auto; padding: 16px 20px 40px; display: grid; gap: 16px; }
+.admin-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+.admin-card h2 { font-size: 1rem; margin: 0 0 10px; }
+.admin-note { color: #666; font-size: 0.85rem; margin: 6px 0 0; }
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.kpi .kpi-value { font-size: 1.6rem; font-weight: 700; }
+.kpi .kpi-label { color: #555; }
+.kpi .kpi-delta { font-size: 0.85rem; color: #2e7d32; }
+.kpi .kpi-delta.worse { color: var(--accent); }
+.admin-two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.admin-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.admin-table th, .admin-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+.admin-table th { color: #555; font-weight: 600; }
+.admin-table td.num, .admin-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.admin-filter { width: 100%; max-width: 320px; margin-bottom: 10px; }
+.json-view { max-height: 60vh; overflow: auto; background: #f6f6f7; padding: 12px; border-radius: 6px; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word; }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart-legend { display: flex; gap: 14px; flex-wrap: wrap; color: #555; font-size: 0.85rem; margin-top: 6px; }
+.chart-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+/* Bestätigen steht im DOM zuerst (Enter bestätigt), Abbrechen erscheint links. */
+.dialog-actions {
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+}

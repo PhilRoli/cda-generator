@@ -9,9 +9,11 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -41,6 +43,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorBody> handleNotReadable() {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorBody("Ungültiger Anfrageinhalt."));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorBody> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return ResponseEntity.badRequest().body(new ErrorBody("Ungültiger Parameter: " + ex.getName()));
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
@@ -82,6 +89,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE)
             .contentType(MediaType.APPLICATION_JSON)
             .body(new ErrorBody("Nicht akzeptabel."));
+    }
+
+    /** Request body sent with a content type the endpoint does not consume. */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorBody> handleUnsupportedMediaType() {
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new ErrorBody("Nicht unterstützter Inhaltstyp."));
     }
 
     @ExceptionHandler(Exception.class)

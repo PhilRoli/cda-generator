@@ -1,6 +1,7 @@
 package at.rolinek.cda.scenario;
 
 import at.rolinek.cda.config.AppProperties;
+import at.rolinek.cda.security.AdminTokenGuard;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,7 @@ class ScenarioServiceImportTest {
         objectMapper = new ObjectMapper();
         AppProperties props = new AppProperties();
         props.setAdminToken("secret");
-        service = new ScenarioService(repository, objectMapper, props);
+        service = new ScenarioService(repository, objectMapper, props, new AdminTokenGuard(props));
     }
 
     // -----------------------------------------------------------------------
