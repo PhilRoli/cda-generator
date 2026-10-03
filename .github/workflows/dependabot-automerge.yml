@@ -10,6 +10,8 @@ permissions:
   actions: write
 
 jobs:
+  # Waits for CI, merges, then starts the deploy itself: merges made with GITHUB_TOKEN
+  # don't trigger push or pull_request-closed workflows.
   auto-merge:
     if: github.actor == 'dependabot[bot]' && github.event.action != 'closed'
     runs-on: ubuntu-latest
@@ -19,16 +21,38 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - if: steps.meta.outputs.update-type != 'version-update:semver-major'
-        run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHECKS: "test"
+        run: |
+          for i in $(seq 1 90); do
+            ready=1
+            for name in $CHECKS; do
+              state=$(gh pr view "$PR_URL" --json statusCheckRollup \
+                --jq "[.statusCheckRollup[] | select(.name == \"$name\") | (.conclusion // .status)] | first // \"MISSING\"")
+              case "$state" in
+                SUCCESS) ;;
+                FAILURE|CANCELLED|TIMED_OUT) echo "Check '$name' is $state, not merging."; exit 1 ;;
+                *) ready=0 ;;
+              esac
+            done
+            if [ "$ready" = 1 ]; then
+              gh pr merge --squash "$PR_URL"
+              gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref "$BASE_REF"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "Timed out waiting for CI."; exit 1
 
-  # Merges made with GITHUB_TOKEN don't trigger push workflows, so start the deploy explicitly.
+  # PRs merged by hand (e.g. major bumps) trigger this normally.
   deploy-after-merge:
     if: >-
       github.event.action == 'closed' && github.event.pull_request.merged == true
       && github.event.pull_request.user.login == 'dependabot[bot]'
+      && github.event.pull_request.merged_by.login != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - run: gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref "$BASE_REF"
