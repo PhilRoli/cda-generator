@@ -25,3 +25,9 @@
 .chart svg { width: 100%; height: auto; display: block; }
 .chart-legend { display: flex; gap: 14px; flex-wrap: wrap; color: #555; font-size: 0.85rem; margin-top: 6px; }
 .chart-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+/* Bestätigen steht im DOM zuerst (Enter bestätigt), Abbrechen erscheint links. */
+.dialog-actions {
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+}

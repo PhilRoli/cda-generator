@@ -3,7 +3,7 @@
 
 import { getState, replaceState, defaultState } from './state.js';
 import { sanitizeState } from './sanitize-state.js';
-import { scenarioIdToUpdate } from './cloud-scenarios.js';
+import { scenarioIdToUpdate, cloudUserHeader } from './cloud-scenarios.js';
 import { apiJson } from './api.js';
 import { downloadFile } from './download.js';
 import { report } from './ui-feedback.js';
