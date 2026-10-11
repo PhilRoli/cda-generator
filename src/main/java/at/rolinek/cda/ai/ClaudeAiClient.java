@@ -4,6 +4,7 @@ import at.rolinek.cda.config.AppProperties;
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.client.okhttp.AnthropicOkHttpClient;
 import com.anthropic.errors.AnthropicException;
+import com.anthropic.errors.AnthropicServiceException;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.StopReason;
 import com.anthropic.models.messages.StructuredMessage;
@@ -60,22 +61,43 @@ public class ClaudeAiClient implements AiClient {
         try {
             response = client().messages().create(params);
         } catch (AnthropicException ex) {
-            // No body/key in the log: class and message only.
-            LOG.warn("KI-Anfrage fehlgeschlagen: {}: {}", ex.getClass().getSimpleName(), ex.getMessage());
-            throw new AiClientException("Der KI-Dienst ist derzeit nicht erreichbar. Bitte später erneut versuchen.", ex);
+            // Type and status only: the exception message embeds the upstream response body.
+            LOG.warn("KI-Anfrage fehlgeschlagen: {}", describe(ex));
+            throw new AiClientException("Der KI-Dienst ist derzeit nicht erreichbar. Bitte später erneut versuchen.");
         }
+        return interpret(response);
+    }
+
+    /** Turns a completed response into a result; refusals, truncation and unparsable output become user errors. */
+    Result interpret(StructuredMessage<AiFillState> response) throws AiClientException {
         if (response.stopReason().filter(StopReason.REFUSAL::equals).isPresent()) {
             throw new AiClientException("Die KI hat diese Anfrage abgelehnt. Bitte die Beschreibung anpassen.");
         }
         if (response.stopReason().filter(StopReason.MAX_TOKENS::equals).isPresent()) {
             throw new AiClientException("Die KI-Antwort war unvollständig. Bitte eine kürzere Beschreibung versuchen.");
         }
-        AiFillState state = response.content().stream()
-            .flatMap(block -> block.text().stream())
-            .map(typed -> typed.text())
-            .findFirst()
-            .orElseThrow(() -> new AiClientException("Die KI hat keine verwertbare Antwort geliefert."));
+        AiFillState state;
+        try {
+            // text() deserializes lazily; its exception message contains the raw model output.
+            state = response.content().stream()
+                .flatMap(block -> block.text().stream())
+                .map(typed -> typed.text())
+                .findFirst()
+                .orElse(null);
+        } catch (AnthropicException ex) {
+            LOG.warn("KI-Antwort nicht lesbar: {}", describe(ex));
+            throw new AiClientException("Die KI hat keine verwertbare Antwort geliefert.");
+        }
+        if (state == null) {
+            throw new AiClientException("Die KI hat keine verwertbare Antwort geliefert.");
+        }
         return new Result(state, response.usage().inputTokens(), response.usage().outputTokens());
+    }
+
+    /** Exception type and HTTP status only; messages of SDK exceptions can contain response bodies. */
+    static String describe(AnthropicException ex) {
+        String type = ex.getClass().getSimpleName();
+        return ex instanceof AnthropicServiceException service ? type + " status=" + service.statusCode() : type;
     }
 
     private AnthropicClient client() {

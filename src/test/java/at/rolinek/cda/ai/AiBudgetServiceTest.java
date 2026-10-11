@@ -106,4 +106,18 @@ class AiBudgetServiceTest {
         assertThatThrownBy(() -> service.checkAllowed("", "198.51.100.0"))
             .isInstanceOf(ResponseStatusException.class);
     }
+
+    @Test
+    void anonymousDailyCapMessageHintsAtEnteringAUsername() {
+        given(queries.aiAttemptsOn(LocalDate.parse("2026-10-11"), "", "198.51.100.0")).willReturn(3L);
+        assertThatThrownBy(() -> service.checkAllowed("", "198.51.100.0"))
+            .isInstanceOfSatisfying(ResponseStatusException.class, ex ->
+                assertThat(ex.getReason()).contains("Benutzername"));
+    }
+
+    @Test
+    void namedUserDailyCapMessageHasNoUsernameHint() {
+        given(queries.aiAttemptsOn(LocalDate.parse("2026-10-11"), "anna", "10.0.0.0")).willReturn(3L);
+        assertThat(rejection().getReason()).doesNotContain("Benutzername");
+    }
 }

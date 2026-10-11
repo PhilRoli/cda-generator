@@ -45,8 +45,11 @@ public class AiBudgetService {
         }
         long used = queries.aiAttemptsOn(LocalDate.now(clock), username == null ? "" : username, ipPrefix);
         if (used >= ai.getUserDailyLimit()) {
+            String hint = (username == null || username.isEmpty())
+                ? " Ohne Benutzernamen teilen sich alle Nutzer im selben Netz ein Limit; mit eingegebenem Benutzernamen (Szenarien) gilt ein eigenes."
+                : "";
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
-                "Tageslimit für KI-Anfragen erreicht. Bitte morgen erneut versuchen.");
+                "Tageslimit für KI-Anfragen erreicht. Bitte morgen erneut versuchen." + hint);
         }
     }
 
