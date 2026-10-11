@@ -743,3 +743,16 @@ button.btn.danger:focus-visible {
     font-size: 0.85rem;
     margin-right: auto;
 }
+
+.beta-badge {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: #fde68a;
+    color: #7c4a03;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    vertical-align: middle;
+}

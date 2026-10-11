@@ -180,7 +180,7 @@ function formatBirthDateForInput(d) {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-function generateSvnr(birthDate) {
+export function generateSvnr(birthDate) {
     const pad = (n) => String(n).padStart(2, '0');
     const dd = pad(birthDate.getDate());
     const mm = pad(birthDate.getMonth() + 1);

@@ -8,6 +8,7 @@ import { getState, replaceState, saveState, defaultState } from './state.js';
 import { renderAllLists, setupListAddButtons, setupQuickAddDropdowns } from './lists.js';
 import { bindInputs, rebindAll, setupPvVisibility, setupSvnrValidation, svnrIsAcceptable, updateSvnrMarking } from './form.js';
 import { setupScenarioManager, getCloudUsername } from './scenario-manager.js';
+import { setupAiFill } from './ai-fill.js';
 import { cloudUserHeader } from './cloud-scenarios.js';
 import { apiJson, apiPdf } from './api.js';
 import { downloadFile, downloadBlob } from './download.js';
@@ -158,6 +159,7 @@ function init() {
     setupQuickAddDropdowns();
     setupButtons();
     setupScenarioManager();
+    setupAiFill();
     setupPvVisibility();
     setupHospitalSelector();
     initVersionBadge();
@@ -165,6 +167,7 @@ function init() {
     setupSvnrValidation();
     setupPanelDialog('scenario-dialog', 'btn-open-scenarios', 'scenario-dialog-close');
     setupPanelDialog('xml-upload-dialog', 'btn-open-xml-upload', 'xml-upload-dialog-close');
+    setupPanelDialog('ai-fill-dialog', 'btn-open-ai-fill', 'ai-fill-dialog-close');
 }
 
 function setupPanelDialog(dialogId, openBtnId, closeBtnId) {

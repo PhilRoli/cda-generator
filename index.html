@@ -14,6 +14,7 @@
                 <div class="subtitle">Entlassungsbrief Ärztlich · Nur für Trainingszwecke</div>
             </div>
             <div class="spacer"></div>
+            <button class="header-email-btn hidden" id="btn-open-ai-fill">✨ Mit KI ausfüllen <span class="beta-badge">BETA</span></button>
             <button class="header-email-btn" id="btn-open-scenarios">📂 Szenarien</button>
             <button class="header-email-btn" id="btn-open-xml-upload">📄 XML konvertieren</button>
             <a class="header-email-btn" href="mailto:philipp@rolinek.at?subject=CDA-%C3%9Cbungsdokument-Ersteller%20Kontakt"
@@ -372,6 +373,25 @@
                     <select id="cloud-scenario-select"></select>
                     <button class="btn" id="btn-cloud-load">Aus Cloud laden</button>
                 </div>
+            </div>
+        </dialog>
+
+        <dialog id="ai-fill-dialog" class="panel-dialog">
+            <div class="panel-dialog-header">
+                <h2>Mit KI ausfüllen <span class="beta-badge">BETA</span></h2>
+                <button class="dialog-close-btn" id="ai-fill-dialog-close" aria-label="Schließen">✕</button>
+            </div>
+            <p class="section-help">
+                Beschreibe den Fall in ein bis zwei Sätzen, z.B. „78-jähriger Mann, Herzinsuffizienz, 5 Tage Kardiologie“.
+                Die KI füllt das gesamte Formular aus. Bitte nur fiktive Angaben eingeben und alle Inhalte danach prüfen.
+                Diese Funktion ist noch in der Testphase (BETA).
+            </p>
+            <div class="scenario-row">
+                <textarea id="ai-fill-prompt" rows="4" maxlength="1000" placeholder="Kurzbeschreibung des Falls"></textarea>
+            </div>
+            <div class="scenario-row">
+                <span id="ai-fill-counter" class="section-help">0 / 1000</span>
+                <button class="btn primary" id="btn-ai-fill-submit" disabled>Formular ausfüllen</button>
             </div>
         </dialog>
 
