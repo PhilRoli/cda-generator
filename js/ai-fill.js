@@ -6,24 +6,25 @@ import { getCloudUsername } from './scenario-manager.js';
 import { replaceState } from './state.js';
 import { rebindAll } from './form.js';
 import { report, withButtonBusy } from './ui-feedback.js';
-import { buildStateFromAi } from './ai-state.js';
+import { fillFromAi } from './ai-state.js';
 
 export async function setupAiFill() {
     const openBtn = document.getElementById('btn-open-ai-fill');
     const dialog = document.getElementById('ai-fill-dialog');
     if (!openBtn || !dialog) return;
 
-    try {
-        const status = await apiJson('/api/ai/status');
-        openBtn.classList.toggle('hidden', !status?.enabled);
-    } catch {
-        openBtn.classList.add('hidden'); // backend without the feature: keep the button hidden
-    }
-
     const textarea = document.getElementById('ai-fill-prompt');
     const counter = document.getElementById('ai-fill-counter');
     const submit = document.getElementById('btn-ai-fill-submit');
-    const max = Number(textarea.getAttribute('maxlength')) || 1000;
+
+    try {
+        const status = await apiJson('/api/ai/status');
+        openBtn.classList.toggle('hidden', !status?.enabled);
+        if (status?.maxPromptChars > 0) textarea.maxLength = status.maxPromptChars; // server limit wins over the markup default
+    } catch {
+        openBtn.classList.add('hidden'); // backend without the feature: keep the button hidden
+    }
+    const max = textarea.maxLength > 0 ? textarea.maxLength : 1000;
 
     const updateCounter = () => {
         counter.textContent = `${textarea.value.length} / ${max}`;
@@ -36,13 +37,20 @@ export async function setupAiFill() {
         if (!window.confirm('Das aktuelle Formular wird mit KI-generierten Daten überschrieben. Fortfahren?')) return;
         await withButtonBusy(submit, 'KI arbeitet…', async () => {
             try {
-                const response = await apiJson('/api/ai/fill', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', ...cloudUserHeader(getCloudUsername()) },
-                    body: JSON.stringify({ prompt: textarea.value.trim() }),
+                const outcome = await fillFromAi({
+                    prompt: textarea.value.trim(),
+                    headers: cloudUserHeader(getCloudUsername()),
+                    fetchJson: apiJson,
+                    isDialogOpen: () => dialog.open,
+                    apply: (state) => {
+                        replaceState(state);
+                        rebindAll();
+                    },
                 });
-                replaceState(buildStateFromAi(response.state));
-                rebindAll();
+                if (outcome === 'discarded') {
+                    report('KI-Ergebnis verworfen, da der Dialog geschlossen wurde.', 'info');
+                    return;
+                }
                 dialog.close();
                 report('Formular per KI ausgefüllt (BETA). Bitte alle Inhalte prüfen.', 'success');
             } catch (err) {

@@ -70,11 +70,13 @@ public class ClaudeAiClient implements AiClient {
 
     /** Turns a completed response into a result; refusals, truncation and unparsable output become user errors. */
     Result interpret(StructuredMessage<AiFillState> response) throws AiClientException {
+        long in = response.usage().inputTokens();
+        long out = response.usage().outputTokens();
         if (response.stopReason().filter(StopReason.REFUSAL::equals).isPresent()) {
-            throw new AiClientException("Die KI hat diese Anfrage abgelehnt. Bitte die Beschreibung anpassen.");
+            throw new AiClientException("Die KI hat diese Anfrage abgelehnt. Bitte die Beschreibung anpassen.", in, out);
         }
         if (response.stopReason().filter(StopReason.MAX_TOKENS::equals).isPresent()) {
-            throw new AiClientException("Die KI-Antwort war unvollständig. Bitte eine kürzere Beschreibung versuchen.");
+            throw new AiClientException("Die KI-Antwort war unvollständig. Bitte eine kürzere Beschreibung versuchen.", in, out);
         }
         AiFillState state;
         try {
@@ -86,12 +88,12 @@ public class ClaudeAiClient implements AiClient {
                 .orElse(null);
         } catch (AnthropicException ex) {
             LOG.warn("KI-Antwort nicht lesbar: {}", describe(ex));
-            throw new AiClientException("Die KI hat keine verwertbare Antwort geliefert.");
+            throw new AiClientException("Die KI hat keine verwertbare Antwort geliefert.", in, out);
         }
         if (state == null) {
-            throw new AiClientException("Die KI hat keine verwertbare Antwort geliefert.");
+            throw new AiClientException("Die KI hat keine verwertbare Antwort geliefert.", in, out);
         }
-        return new Result(state, response.usage().inputTokens(), response.usage().outputTokens());
+        return new Result(state, in, out);
     }
 
     /** Exception type and HTTP status only; messages of SDK exceptions can contain response bodies. */
@@ -108,7 +110,8 @@ public class ClaudeAiClient implements AiClient {
                     sdk = AnthropicOkHttpClient.builder()
                         .apiKey(ai.getApiKey())
                         .timeout(Duration.ofSeconds(ai.getTimeoutSeconds()))
-                        .maxRetries(1)
+                        // No retries: a retry (plus an unbounded Retry-After wait) would stretch the 30 s bound to 60 s+.
+                        .maxRetries(0)
                         .build();
                 }
                 local = sdk;

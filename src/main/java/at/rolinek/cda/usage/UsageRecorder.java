@@ -37,7 +37,7 @@ public class UsageRecorder {
                 type,
                 ok,
                 httpStatus,
-                cap(username == null ? "" : username.trim(), MAX_USERNAME),
+                normalizeUsername(username),
                 IpPrefix.of(ClientIp.from(request)),
                 ok ? cap(detail == null ? "" : detail, MAX_DETAIL) : reasonFor(httpStatus),
                 Math.max(0L, inputTokens),
@@ -45,6 +45,11 @@ public class UsageRecorder {
         } catch (RuntimeException ex) {
             LOG.warn("Nutzungsereignis konnte nicht gespeichert werden ({}): {}", type.wireName(), ex.getMessage());
         }
+    }
+
+    /** The username exactly as it is stored; counting and caps must use the same form. */
+    public static String normalizeUsername(String username) {
+        return cap(username == null ? "" : username.trim(), MAX_USERNAME);
     }
 
     static String reasonFor(int status) {

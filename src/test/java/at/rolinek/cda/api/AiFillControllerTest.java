@@ -110,9 +110,29 @@ class AiFillControllerTest {
     }
 
     @Test
+    void billedTokensOfAFailedCallAreRecorded() throws Exception {
+        given(client.fill(anyString())).willThrow(new AiClientException("Die KI-Antwort war unvollständig.", 120L, 4000L));
+
+        fill("{\"prompt\":\"Test\"}", "anna").andExpect(status().isBadGateway());
+
+        verify(usageRecorder).record(eq(UsageType.AI_FILL), eq(502), eq("anna"), any(), eq(""), eq(120L), eq(4000L));
+    }
+
+    @Test
+    void overlongUsernameIsTruncatedLikeTheStoredOneBeforeTheCapCheck() throws Exception {
+        given(client.fill(anyString())).willReturn(new AiClient.Result(AiFillStateFixtures.sample(), 1, 1));
+
+        fill("{\"prompt\":\"Test\"}", "a".repeat(70)).andExpect(status().isOk());
+
+        verify(budget).checkAllowed(eq("a".repeat(64)), anyString());
+        verify(usageRecorder).record(eq(UsageType.AI_FILL), eq(200), eq("a".repeat(64)), any(), eq(""), eq(1L), eq(1L));
+    }
+
+    @Test
     void statusReflectsBudgetService() throws Exception {
         given(budget.enabled()).willReturn(true);
-        mvc.perform(get("/api/ai/status")).andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(true));
+        mvc.perform(get("/api/ai/status")).andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(true))
+            .andExpect(jsonPath("$.maxPromptChars").value(1000));
         given(budget.enabled()).willReturn(false);
         mvc.perform(get("/api/ai/status")).andExpect(jsonPath("$.enabled").value(false));
     }

@@ -44,8 +44,8 @@ public class AiFillController {
     }
 
     @GetMapping("/status")
-    public Map<String, Boolean> status() {
-        return Map.of("enabled", budget.enabled());
+    public Map<String, Object> status() {
+        return Map.of("enabled", budget.enabled(), "maxPromptChars", budget.maxPromptChars());
     }
 
     @PostMapping("/fill")
@@ -58,8 +58,7 @@ public class AiFillController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                 "Bitte eine kurze Beschreibung eingeben (höchstens " + max + " Zeichen).");
         }
-        String decoded = UsageRecordingFilter.decodeUser(userHeader);
-        String user = decoded == null ? "" : decoded.strip();
+        String user = UsageRecorder.normalizeUsername(UsageRecordingFilter.decodeUser(userHeader));
         try {
             budget.checkAllowed(user, IpPrefix.of(ClientIp.from(request)));
         } catch (ResponseStatusException ex) {
@@ -72,7 +71,7 @@ public class AiFillController {
             return new FillResponse(result.state());
         } catch (AiClientException ex) {
             LOG.warn("event=ai_fill_failed reason={}", ex.getMessage());
-            usageRecorder.record(UsageType.AI_FILL, 502, user, request, "", 0L, 0L);
+            usageRecorder.record(UsageType.AI_FILL, 502, user, request, "", ex.inputTokens(), ex.outputTokens());
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, ex.getMessage());
         }
     }

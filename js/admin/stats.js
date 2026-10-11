@@ -28,6 +28,16 @@ export function delta(current, previous) {
 
 const usd = (n) => `${n.toLocaleString('de-AT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
 
+/** Awaits an optional request: a failure yields null instead of failing the whole tab (a cancelled prompt still propagates). */
+export async function settleOptional(promise) {
+    try {
+        return await promise;
+    } catch (err) {
+        if (err?.cancelled) throw err;
+        return null;
+    }
+}
+
 export function aiCardRows(ai) {
     return [
         ['Monat (UTC)', ai.month],
@@ -134,7 +144,7 @@ export function initStatsTab(root, getDays) {
                 adminApiJson(`/api/admin/stats/users${q}`),
                 adminApiJson(`/api/admin/stats/failures${q}`),
                 adminApiJson(`/api/admin/stats/scenarios${q}`),
-                adminApiJson('/api/admin/stats/ai'),
+                settleOptional(adminApiJson('/api/admin/stats/ai')),
             ]);
             if (mine !== seq) return; // a newer refresh superseded this one
             root.innerHTML = '';
@@ -197,7 +207,14 @@ export function initStatsTab(root, getDays) {
             root.appendChild(scenCols);
 
             const aiCard = card('KI-Fill (BETA)');
-            aiCard.appendChild(table(['Kennzahl', 'Wert'], aiCardRows(ai)));
+            if (ai) {
+                aiCard.appendChild(table(['Kennzahl', 'Wert'], aiCardRows(ai)));
+            } else {
+                const unavailable = document.createElement('p');
+                unavailable.className = 'admin-note';
+                unavailable.textContent = 'KI-Statistik nicht verfügbar.';
+                aiCard.appendChild(unavailable);
+            }
             root.appendChild(aiCard);
         } catch (err) {
             if (mine === seq && !err.cancelled) report(`Statistik konnte nicht geladen werden: ${err.message}`, 'error');
