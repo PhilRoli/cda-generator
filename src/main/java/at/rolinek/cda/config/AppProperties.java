@@ -17,6 +17,7 @@ public class AppProperties {
     private final Pdf pdf = new Pdf();
     private final Backup backup = new Backup();
     private final Usage usage = new Usage();
+    private final Ai ai = new Ai();
 
     public String getVersion() {
         return version;
@@ -100,6 +101,10 @@ public class AppProperties {
 
     public Usage getUsage() {
         return usage;
+    }
+
+    public Ai getAi() {
+        return ai;
     }
 
     /** Backup-scheduler configuration. */
@@ -198,6 +203,93 @@ public class AppProperties {
 
         public void setRetentionDays(int retentionDays) {
             this.retentionDays = Math.max(1, retentionDays);
+        }
+    }
+
+    /** AI-fill (BETA) tunables. An empty api key disables the feature (fail-closed). */
+    public static class Ai {
+        private String apiKey = "";
+        private String model = "claude-haiku-5-5";
+        /** Fill requests per user (or anonymous IP) per UTC day. */
+        private int userDailyLimit = 20;
+        /** Estimated spend per UTC month after which the feature switches itself off. */
+        private double monthlyBudgetUsd = 40.0;
+        /** USD per 1M input / output tokens (Haiku 5.5, prompts up to 100K tokens). */
+        private double inputPricePerMtok = 0.10;
+        private double outputPricePerMtok = 0.50;
+        private int maxPromptChars = 1000;
+        private int timeoutSeconds = 30;
+
+        public boolean enabled() {
+            return !apiKey.isBlank();
+        }
+
+        public double costUsd(long inputTokens, long outputTokens) {
+            return (inputTokens * inputPricePerMtok + outputTokens * outputPricePerMtok) / 1_000_000.0;
+        }
+
+        public String getApiKey() {
+            return apiKey;
+        }
+
+        public void setApiKey(String apiKey) {
+            this.apiKey = apiKey == null ? "" : apiKey.trim();
+        }
+
+        public String getModel() {
+            return model;
+        }
+
+        public void setModel(String model) {
+            this.model = model;
+        }
+
+        public int getUserDailyLimit() {
+            return userDailyLimit;
+        }
+
+        public void setUserDailyLimit(int userDailyLimit) {
+            this.userDailyLimit = Math.max(1, userDailyLimit);
+        }
+
+        public double getMonthlyBudgetUsd() {
+            return monthlyBudgetUsd;
+        }
+
+        public void setMonthlyBudgetUsd(double monthlyBudgetUsd) {
+            this.monthlyBudgetUsd = monthlyBudgetUsd;
+        }
+
+        public double getInputPricePerMtok() {
+            return inputPricePerMtok;
+        }
+
+        public void setInputPricePerMtok(double inputPricePerMtok) {
+            this.inputPricePerMtok = inputPricePerMtok;
+        }
+
+        public double getOutputPricePerMtok() {
+            return outputPricePerMtok;
+        }
+
+        public void setOutputPricePerMtok(double outputPricePerMtok) {
+            this.outputPricePerMtok = outputPricePerMtok;
+        }
+
+        public int getMaxPromptChars() {
+            return maxPromptChars;
+        }
+
+        public void setMaxPromptChars(int maxPromptChars) {
+            this.maxPromptChars = Math.max(1, maxPromptChars);
+        }
+
+        public int getTimeoutSeconds() {
+            return timeoutSeconds;
+        }
+
+        public void setTimeoutSeconds(int timeoutSeconds) {
+            this.timeoutSeconds = Math.max(1, timeoutSeconds);
         }
     }
 }
