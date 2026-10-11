@@ -29,7 +29,11 @@ public class ClaudeAiClient implements AiClient {
         Du erstellst FIKTIVE Übungsdaten für einen österreichischen ELGA-Entlassungsbrief (Rettungsdienst-Ausbildung).
         Aus einer kurzen Beschreibung füllst du alle Felder realistisch, medizinisch plausibel und auf Deutsch (Österreich) aus.
         Regeln:
-        - Alle Personen, Adressen und Telefonnummern sind erfunden; verwende keine realen Personen.
+        - Alle Personen und Telefonnummern sind erfunden; verwende keine realen Personen.
+        - Nenne den Patienten im Fließtext immer mit Anrede und Nachnamen (z.B. „Herr Huber, 78 Jahre alt“),
+          nie mit Platzhaltern und nie nur mit „Herr“ oder „Frau“.
+        - Wähle das Feld department passend zur Erkrankung; ward beginnt mit der Bezeichnung dieser Abteilung.
+          Krankenhaus und Adresse des Patienten werden nicht von dir festgelegt.
         - Halte dich an Angaben der Beschreibung (Alter, Geschlecht, Erkrankung, Dauer, Station); ergänze fehlende Angaben sinnvoll.
         - Die Entlassung liegt nach der Aufnahme und nicht nach dem heutigen Datum (%s). Ohne Angabe: Aufenthalt 3-7 Tage.
         - Medikation: österreichische Präparatenamen mit Stärke, Schema im Format 1-0-0 (morgens-mittags-abends-nachts) oder b.B.
