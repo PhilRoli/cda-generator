@@ -162,6 +162,23 @@ sudo systemctl reload caddy
 - `deploy.sh` – Hetzner-Deploy
 - `.env.example` – Env-Template
 
+## KI-Ausfüllhilfe (BETA)
+
+Der Button **✨ Mit KI ausfüllen** (BETA) füllt das gesamte Formular aus einer kurzen Fallbeschreibung aus
+(z.B. „78-jähriger Mann, Herzinsuffizienz, 5 Tage Kardiologie“). Das Backend ruft dazu die Claude API auf
+(Standard: `claude-haiku-5-5`, ca. 0,1 Cent pro Aufruf); der API-Schlüssel verlässt den Server nie.
+Es dürfen nur fiktive Daten eingegeben werden, alle Inhalte müssen danach geprüft werden.
+
+Konfiguration (Server-`.env`, `/opt/apps/cda-uebung/.env`):
+
+- `APP_AI_API_KEY`: Claude-API-Schlüssel. **Leer = Funktion deaktiviert** (Button bleibt verborgen).
+- `APP_AI_MODEL` (Standard `claude-haiku-5-5`)
+- `APP_AI_USER_DAILY_LIMIT` (Standard 20): Anfragen pro Benutzer bzw. gekürzter IP und UTC-Tag
+- `APP_AI_MONTHLY_BUDGET_USD` (Standard 40): geschätzte Kosten pro UTC-Monat, danach schaltet sich die Funktion ab
+
+Endpunkte: `POST /api/ai/fill` (`{"prompt": "..."}`, max. 1000 Zeichen), `GET /api/ai/status`.
+Verbrauch und geschätzte Kosten: Admin-Bereich, Karte **KI-Fill (BETA)** (`GET /api/admin/stats/ai`).
+
 ## Hinweis
 
 Alle generierten Dokumente sind ausschließlich für **Übungszwecke** bestimmt.
