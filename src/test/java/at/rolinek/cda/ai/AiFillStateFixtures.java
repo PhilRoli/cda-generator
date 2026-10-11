@@ -7,12 +7,11 @@ public final class AiFillStateFixtures {
     private AiFillStateFixtures() {}
 
     public static AiFillState sample() {
-        AiFillState.Address address = new AiFillState.Address("Hauptstraße", "12", "4020", "Linz");
         return new AiFillState(
-            new AiFillState.Patient("Franz", "Huber", "M", "1947-05-03", "06641234567", address),
-            new AiFillState.Organization("Klinikum Linz", "+43(0)732123", address),
+            new AiFillState.Patient("Franz", "Huber", "M", "1947-05-03", "06641234567"),
             new AiFillState.Author("Dr.", "Eva", "Maier"),
-            new AiFillState.Encounter("2026-10-06T14:30", "2026-10-11T11:00", "Kardiologie, Station 2A"),
+            new AiFillState.Encounter("2026-10-06T14:30", "2026-10-11T11:00", "Kardiologie, Station 2A",
+                AiFillState.Department.KARDIOLOGIE),
             "Dekompensierte Herzinsuffizienz.",
             "Zunehmende Dyspnoe seit einer Woche.",
             "Diuretische Therapie, Rekompensation.",

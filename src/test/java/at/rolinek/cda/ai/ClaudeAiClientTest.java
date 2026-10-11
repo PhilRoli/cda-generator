@@ -100,6 +100,14 @@ class ClaudeAiClientTest {
     }
 
     @Test
+    void systemPromptNamesThePatientInTextAndPicksADepartment() {
+        assertThat(ClaudeAiClient.SYSTEM_PROMPT)
+            .contains("Nachnamen")
+            .contains("department")
+            .doesNotContain("Adressen");
+    }
+
+    @Test
     void nonServiceErrorsAreDescribedByTypeOnly() {
         assertThat(ClaudeAiClient.describe(new AnthropicInvalidDataException("SECRET")))
             .isEqualTo("AnthropicInvalidDataException")

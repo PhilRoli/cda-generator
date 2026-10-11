@@ -14,6 +14,10 @@ export async function setupAiFill() {
     if (!openBtn || !dialog) return;
 
     const textarea = document.getElementById('ai-fill-prompt');
+    const blSelect = document.getElementById('ai-fill-bundesland');
+    const globalBl = document.getElementById('global-bundesland');
+    // Same options as the form's own Bundesland select; the placeholder option (value "") stays.
+    globalBl.querySelectorAll('option').forEach((o) => blSelect.appendChild(o.cloneNode(true)));
     const counter = document.getElementById('ai-fill-counter');
     const submit = document.getElementById('btn-ai-fill-submit');
 
@@ -28,9 +32,19 @@ export async function setupAiFill() {
 
     const updateCounter = () => {
         counter.textContent = `${textarea.value.length} / ${max}`;
-        submit.disabled = textarea.value.trim() === '';
+        submit.disabled = textarea.value.trim() === '' || blSelect.value === '';
     };
     textarea.addEventListener('input', updateCounter);
+    openBtn.addEventListener('click', () => {
+        blSelect.value = globalBl.value; // start from what the form already has
+        updateCounter();
+    });
+    blSelect.addEventListener('change', () => {
+        // Keep the form's Bundesland (and its hospital dropdown) in sync with the choice made here.
+        globalBl.value = blSelect.value;
+        globalBl.dispatchEvent(new Event('change'));
+        updateCounter();
+    });
     updateCounter();
 
     submit.addEventListener('click', async () => {
@@ -39,6 +53,7 @@ export async function setupAiFill() {
             try {
                 const outcome = await fillFromAi({
                     prompt: textarea.value.trim(),
+                    bundesland: blSelect.value,
                     headers: cloudUserHeader(getCloudUsername()),
                     fetchJson: apiJson,
                     isDialogOpen: () => dialog.open,

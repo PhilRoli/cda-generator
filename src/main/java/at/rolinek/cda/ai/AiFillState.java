@@ -7,11 +7,12 @@ import java.util.List;
 /**
  * Structured-output target for the AI fill. Component names equal the frontend state keys
  * (js/state.js) so the serialized form feeds sanitizeState() unchanged. Fields the client
- * generates itself (SVNR, documentDate, caseId, encounter type, country) are deliberately absent.
+ * generates itself are deliberately absent: SVNR, documentDate, caseId, encounter type, country, and
+ * the hospital and the patient's address (picked from the curated list / address pool of the chosen
+ * Bundesland so they are real and consistent; {@code encounter.department} steers the hospital choice).
  */
 public record AiFillState(
     Patient patient,
-    Organization organization,
     Author author,
     Encounter encounter,
     @JsonPropertyDescription("Aufnahmegrund, 1-3 Sätze") String aufnahmegrund,
@@ -26,19 +27,10 @@ public record AiFillState(
     @JsonPropertyDescription("Risikofaktoren, 0-4 Einträge") List<Risikofaktor> risikofaktoren,
     Patientenverfuegung patientenverfuegung) {
 
-    public record Address(String street, String houseNumber,
-                          @JsonPropertyDescription("Österreichische Postleitzahl, 4 Ziffern") String postalCode,
-                          String city) {}
-
     public record Patient(String givenName, String familyName,
                           @JsonPropertyDescription("Genau M oder F") String gender,
                           @JsonPropertyDescription("Geburtsdatum YYYY-MM-DD, passend zum genannten Alter") String birthDate,
-                          @JsonPropertyDescription("Österreichische Mobilnummer, nur Ziffern") String phone,
-                          Address address) {}
-
-    public record Organization(@JsonPropertyDescription("Name eines Krankenhauses, passend zur Fachrichtung") String name,
-                               @JsonPropertyDescription("Telefon, z.B. +43(0)57255") String phone,
-                               Address address) {}
+                          @JsonPropertyDescription("Österreichische Mobilnummer, nur Ziffern") String phone) {}
 
     public record Author(@JsonPropertyDescription("z.B. Dr., OA Dr., Prim. Dr.") String title,
                          String givenName, String familyName) {}
@@ -46,7 +38,16 @@ public record AiFillState(
     public record Encounter(@JsonPropertyDescription("Aufnahme YYYY-MM-DDTHH:mm") String admissionDate,
                             @JsonPropertyDescription("Entlassung YYYY-MM-DDTHH:mm, nach der Aufnahme, nicht in der Zukunft")
                             String dischargeDate,
-                            @JsonPropertyDescription("Station, z.B. Kardiologie, Station 2A") String ward) {}
+                            @JsonPropertyDescription("Station, beginnt mit der Abteilung, z.B. Kardiologie, Station 2A") String ward,
+                            @JsonPropertyDescription("Fachrichtung der behandelnden Abteilung, passend zur Erkrankung") Department department) {}
+
+    /** Constant names are mirrored by DEPARTMENTS in js/hospitals.js (guarded by a bun test). */
+    public enum Department {
+        INNERE_MEDIZIN, KARDIOLOGIE, GASTROENTEROLOGIE, PULMOLOGIE, NEPHROLOGIE, ONKOLOGIE, GERIATRIE,
+        NEUROLOGIE, NEUROCHIRURGIE, ALLGEMEINCHIRURGIE, UNFALLCHIRURGIE, ORTHOPAEDIE, GEFAESSCHIRURGIE,
+        HERZ_THORAX_CHIRURGIE, UROLOGIE, GYNAEKOLOGIE_GEBURTSHILFE, KINDER_JUGENDHEILKUNDE, PSYCHIATRIE,
+        HNO, AUGENHEILKUNDE, DERMATOLOGIE, PLASTISCHE_CHIRURGIE
+    }
 
     public record Text(String text) {}
 

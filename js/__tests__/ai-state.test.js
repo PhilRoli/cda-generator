@@ -1,15 +1,15 @@
 import { test, expect, describe } from 'bun:test';
-import { buildStateFromAi, fillFromAi } from '../ai-state.js';
+import { buildStateFromAi, fillFromAi, pickHospital, nameBareTitles } from '../ai-state.js';
+import { readFileSync } from 'node:fs';
+import { DEPARTMENTS } from '../hospitals.js';
 import { isValidSvnr } from '../faker.js';
 
 const ai = () => ({
     patient: {
         givenName: 'Franz', familyName: 'Huber', gender: 'M', birthDate: '1947-05-03', phone: '06641234567',
-        address: { street: 'Hauptstraße', houseNumber: '12', postalCode: '4020', city: 'Linz' },
     },
-    organization: { name: 'Klinikum Linz', phone: '+43(0)732123', address: { street: 'A', houseNumber: '1', postalCode: '4020', city: 'Linz' } },
     author: { title: 'Dr.', givenName: 'Eva', familyName: 'Maier' },
-    encounter: { admissionDate: '2026-10-06T14:30', dischargeDate: '2026-10-11T11:00', ward: 'Kardiologie' },
+    encounter: { admissionDate: '2026-10-06T14:30', dischargeDate: '2026-10-11T11:00', ward: 'Kardiologie, Station 2A', department: 'KARDIOLOGIE' },
     aufnahmegrund: 'Dekompensierte Herzinsuffizienz.',
     anamnese: 'Dyspnoe.',
     verlauf: 'Rekompensation.',
@@ -31,6 +31,7 @@ describe('buildStateFromAi', () => {
         expect(isValidSvnr(s.patient.svnr)).toBe(true);
         expect(s.patient.svnr.endsWith('030547')).toBe(true); // DDMMYY of 1947-05-03
         expect(s.patient.address.country).toBe('A');
+        expect(s.encounter.department).toBeUndefined(); // steering field, not part of the form state
         expect(s.encounter.caseId).toBe('');
         expect(s.vorerkrankungen).toEqual([]); // an empty AI list replaces the default content
     });
@@ -89,6 +90,7 @@ describe('fillFromAi', () => {
         const calls = { applied: [], requests: [] };
         const deps = {
             prompt: 'Herzinsuffizienz',
+            bundesland: 'S',
             headers: { 'X-Cda-User': 'anna' },
             fetchJson: async (url, options) => {
                 calls.requests.push({ url, options });
@@ -109,6 +111,7 @@ describe('fillFromAi', () => {
         expect(JSON.parse(calls.requests[0].options.body)).toEqual({ prompt: 'Herzinsuffizienz' });
         expect(calls.applied).toHaveLength(1);
         expect(calls.applied[0].patient.givenName).toBe('Franz');
+        expect(calls.applied[0].patient.address.postalCode.startsWith('5')).toBe(true); // Salzburg address pool
     });
 
     test('a result that arrives after the dialog was closed is discarded, not applied', async () => {
@@ -121,5 +124,98 @@ describe('fillFromAi', () => {
         const { calls, result } = run({ fetchJson: async () => { throw new Error('Tageslimit'); } });
         await expect(result).rejects.toThrow('Tageslimit');
         expect(calls.applied).toEqual([]);
+    });
+});
+
+const H = (name, departments, city = 'Salzburg') => ({
+    name, phone: '+43 1', street: 'S', houseNumber: '1', postalCode: '5020', city, departments,
+});
+const hospitals = {
+    S: [
+        H('Nur Chirurgie', [DEPARTMENTS.ALLGEMEINCHIRURGIE]),
+        H('Interne', [DEPARTMENTS.INNERE_MEDIZIN]),
+        H('Herzzentrum', [DEPARTMENTS.INNERE_MEDIZIN, DEPARTMENTS.KARDIOLOGIE]),
+    ],
+    W: [H('Wiener Spital', [DEPARTMENTS.NEUROLOGIE], 'Wien')],
+    T: [],
+};
+
+describe('pickHospital', () => {
+    const first = () => 0;
+    test('only hospitals that have the department qualify', () => {
+        expect(pickHospital(hospitals, 'S', 'KARDIOLOGIE', first).name).toBe('Herzzentrum');
+        expect(pickHospital(hospitals, 'S', 'ALLGEMEINCHIRURGIE', first).name).toBe('Nur Chirurgie');
+    });
+
+    test('the random source chooses among several matches', () => {
+        const names = [0, 0.99].map((r) => pickHospital(hospitals, 'S', 'INNERE_MEDIZIN', () => r).name);
+        expect(names).toEqual(['Interne', 'Herzzentrum']);
+    });
+
+    test('an internal sub-specialty without its own department falls back to internal medicine, never to surgery', () => {
+        const noCardio = { S: [hospitals.S[0], hospitals.S[1]] };
+        expect(pickHospital(noCardio, 'S', 'KARDIOLOGIE', first).name).toBe('Interne');
+        expect(pickHospital(noCardio, 'S', 'GASTROENTEROLOGIE', () => 0.99).name).toBe('Interne');
+    });
+
+    test('with no hospital for the department any hospital of the Bundesland is better than none', () => {
+        expect(pickHospital(hospitals, 'W', 'KARDIOLOGIE', first).name).toBe('Wiener Spital');
+    });
+
+    test('unknown or empty Bundesland and unknown department give null or a safe pick', () => {
+        expect(pickHospital(hospitals, 'T', 'KARDIOLOGIE', first)).toBeNull();
+        expect(pickHospital(hospitals, '', 'KARDIOLOGIE', first)).toBeNull();
+        expect(pickHospital(hospitals, 'S', 'GIBTS_NICHT', first)).not.toBeNull();
+    });
+});
+
+describe('buildStateFromAi with a Bundesland', () => {
+    test('organization comes from a real hospital that fits the department, address from the Bundesland pool', () => {
+        const s = buildStateFromAi(ai(), { bundesland: 'S', hospitals, random: () => 0 });
+        expect(s.organization.name).toBe('Herzzentrum');
+        expect(s.organization.address).toEqual({ street: 'S', houseNumber: '1', postalCode: '5020', city: 'Salzburg', country: 'A' });
+        expect(s.organization.phone).toBe('+43 1');
+        expect(s.patient.address.postalCode.startsWith('5')).toBe(true);
+    });
+
+    test('without a Bundesland the organization stays as in the defaults but the patient still gets a pool address', () => {
+        const s = buildStateFromAi(ai(), { hospitals });
+        expect(s.organization.name).toBe('Universitätsklinikum Salzburg Landeskrankenhaus');
+        expect(s.patient.address.street).not.toBe('Linzer Bundesstraße'.repeat(2));
+        expect(s.patient.address.country).toBe('A');
+        expect(s.patient.address.postalCode).toMatch(/^\d{4}$/);
+    });
+});
+
+describe('nameBareTitles', () => {
+    test('a bare title in front of the age gets the family name', () => {
+        expect(nameBareTitles('Herr 78 Jahre alt, wurde aufgenommen.', 'Huber')).toBe('Herr Huber 78 Jahre alt, wurde aufgenommen.');
+        expect(nameBareTitles('Frau 81-jährig stellte sich vor.', 'Gruber')).toBe('Frau Gruber 81-jährig stellte sich vor.');
+        expect(nameBareTitles('Herr, 78 Jahre alt, kam.', 'Huber')).toBe('Herr Huber, 78 Jahre alt, kam.');
+    });
+
+    test('text that already names the patient or does not match is left alone', () => {
+        expect(nameBareTitles('Herr Huber, 78 Jahre alt, kam.', 'Huber')).toBe('Herr Huber, 78 Jahre alt, kam.');
+        expect(nameBareTitles('Der 78-jährige Herr kam.', 'Huber')).toBe('Der 78-jährige Herr kam.');
+        expect(nameBareTitles('', 'Huber')).toBe('');
+        expect(nameBareTitles('Herr 78 Jahre alt', '')).toBe('Herr 78 Jahre alt');
+    });
+
+    test('is applied to the generated texts', () => {
+        const a = ai();
+        a.anamnese = 'Herr 78 Jahre alt, bekannte Herzinsuffizienz.';
+        a.verlauf = 'Frau, 78 Jahre alt, ...';
+        const s = buildStateFromAi(a);
+        expect(s.anamnese).toBe('Herr Huber 78 Jahre alt, bekannte Herzinsuffizienz.');
+        expect(s.verlauf).toBe('Frau Huber, 78 Jahre alt, ...');
+    });
+});
+
+describe('department vocabulary', () => {
+    test('the Java enum and DEPARTMENTS in hospitals.js list the same constants', () => {
+        const java = readFileSync(new URL('../../src/main/java/at/rolinek/cda/ai/AiFillState.java', import.meta.url), 'utf8');
+        const block = /enum Department \{([^}]*)\}/.exec(java)[1];
+        const names = block.split(',').map((n) => n.trim()).filter(Boolean);
+        expect(Object.keys(DEPARTMENTS).sort()).toEqual([...names].sort());
     });
 });

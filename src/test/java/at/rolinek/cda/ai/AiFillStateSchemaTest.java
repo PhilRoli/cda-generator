@@ -15,7 +15,9 @@ class AiFillStateSchemaTest {
         JsonNode json = mapper.valueToTree(AiFillStateFixtures.sample());
 
         assertThat(json.path("patient").path("givenName").asText()).isEqualTo("Franz");
-        assertThat(json.path("patient").path("address").path("postalCode").asText()).isEqualTo("4020");
+        assertThat(json.has("organization")).isFalse(); // hospital is picked client-side from the curated list
+        assertThat(json.path("patient").has("address")).isFalse(); // address comes from the Bundesland pool
+        assertThat(json.path("encounter").path("department").asText()).isEqualTo("KARDIOLOGIE");
         assertThat(json.path("encounter").path("dischargeDate").asText()).isEqualTo("2026-10-11T11:00");
         assertThat(json.path("diagnosen").get(0).path("text").asText()).startsWith("Chronische");
         assertThat(json.path("medikation").get(0).path("schema").asText()).isEqualTo("1-0-0");
