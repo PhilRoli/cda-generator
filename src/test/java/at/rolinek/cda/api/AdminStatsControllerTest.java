@@ -1,5 +1,6 @@
 package at.rolinek.cda.api;
 
+import at.rolinek.cda.ai.AiBudgetService;
 import at.rolinek.cda.scenario.BackupService;
 import at.rolinek.cda.security.AdminTokenGuard;
 import at.rolinek.cda.usage.StatsService;
@@ -32,6 +33,7 @@ class AdminStatsControllerTest {
     @MockitoBean BackupService backupService;
     @MockitoBean AdminTokenGuard adminTokenGuard;
     @MockitoBean UsageRecorder usageRecorder;
+    @MockitoBean AiBudgetService aiBudgetService;
 
     @Test
     void summaryDefaultsTo30Days() throws Exception {
@@ -70,5 +72,28 @@ class AdminStatsControllerTest {
         mvc.perform(get("/api/admin/backup/status").header("Authorization", "Bearer t"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.count").value(12));
+    }
+
+    @Test
+    void aiSpendIsReturnedForAdmins() throws Exception {
+        given(aiBudgetService.monthSummary())
+            .willReturn(new AiBudgetService.MonthSummary("2026-10", 12, 18000, 8400, 0.006, 40.0));
+
+        mvc.perform(get("/api/admin/stats/ai").header("Authorization", "Bearer t"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.month").value("2026-10"))
+            .andExpect(jsonPath("$.fills").value(12))
+            .andExpect(jsonPath("$.estimatedUsd").value(0.006))
+            .andExpect(jsonPath("$.budgetUsd").value(40.0));
+    }
+
+    @Test
+    void aiSpendRequiresTheAdminToken() throws Exception {
+        willThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Ungültiger Admin-Token."))
+            .given(adminTokenGuard).require("Bearer wrong");
+
+        mvc.perform(get("/api/admin/stats/ai").header("Authorization", "Bearer wrong"))
+            .andExpect(status().isForbidden());
+        verifyNoInteractions(aiBudgetService);
     }
 }
