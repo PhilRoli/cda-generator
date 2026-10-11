@@ -17,13 +17,35 @@ export const REASON_LABELS = {
     client_error: 'Anfragefehler',
 };
 
-const TYPE_NAMES = { ...TYPE_LABELS, scenario_save: 'Szenario gespeichert', scenario_load: 'Szenario geladen' };
+const TYPE_NAMES = { ...TYPE_LABELS, scenario_save: 'Szenario gespeichert', scenario_load: 'Szenario geladen', ai_fill: 'KI-Fill (BETA)' };
 
 export function delta(current, previous) {
     if (previous === 0) return { text: current ? 'neu' : '±0', worse: false };
     const pct = Math.round(((current - previous) / previous) * 100);
     if (pct === 0) return { text: '±0 %', worse: false };
     return { text: `${pct > 0 ? '+' : '−'}${Math.abs(pct)} %`, worse: false };
+}
+
+const usd = (n) => `${n.toLocaleString('de-AT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
+
+/** Awaits an optional request: a failure yields null instead of failing the whole tab (a cancelled prompt still propagates). */
+export async function settleOptional(promise) {
+    try {
+        return await promise;
+    } catch (err) {
+        if (err?.cancelled) throw err;
+        return null;
+    }
+}
+
+export function aiCardRows(ai) {
+    return [
+        ['Monat (UTC)', ai.month],
+        ['Ausfüllungen', ai.fills.toLocaleString('de-AT')],
+        ['Tokens (Eingabe / Ausgabe)', `${ai.inputTokens.toLocaleString('de-AT')} / ${ai.outputTokens.toLocaleString('de-AT')}`],
+        ['Geschätzte Kosten', usd(ai.estimatedUsd)],
+        ['Monatslimit', usd(ai.budgetUsd)],
+    ];
 }
 
 export function kpis(summary) {
@@ -116,12 +138,13 @@ export function initStatsTab(root, getDays) {
         const days = getDays();
         try {
             const q = `?days=${days}`;
-            const [summary, timeline, users, failures, scenarios] = await Promise.all([
+            const [summary, timeline, users, failures, scenarios, ai] = await Promise.all([
                 adminApiJson(`/api/admin/stats/summary${q}`),
                 adminApiJson(`/api/admin/stats/timeline${q}`),
                 adminApiJson(`/api/admin/stats/users${q}`),
                 adminApiJson(`/api/admin/stats/failures${q}`),
                 adminApiJson(`/api/admin/stats/scenarios${q}`),
+                settleOptional(adminApiJson('/api/admin/stats/ai')),
             ]);
             if (mine !== seq) return; // a newer refresh superseded this one
             root.innerHTML = '';
@@ -182,6 +205,17 @@ export function initStatsTab(root, getDays) {
             if (n2) perUserCard.appendChild(n2);
             scenCols.append(topCard, perUserCard);
             root.appendChild(scenCols);
+
+            const aiCard = card('KI-Fill (BETA)');
+            if (ai) {
+                aiCard.appendChild(table(['Kennzahl', 'Wert'], aiCardRows(ai)));
+            } else {
+                const unavailable = document.createElement('p');
+                unavailable.className = 'admin-note';
+                unavailable.textContent = 'KI-Statistik nicht verfügbar.';
+                aiCard.appendChild(unavailable);
+            }
+            root.appendChild(aiCard);
         } catch (err) {
             if (mine === seq && !err.cancelled) report(`Statistik konnte nicht geladen werden: ${err.message}`, 'error');
         }

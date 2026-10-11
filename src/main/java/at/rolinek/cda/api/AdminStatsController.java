@@ -1,5 +1,6 @@
 package at.rolinek.cda.api;
 
+import at.rolinek.cda.ai.AiBudgetService;
 import at.rolinek.cda.scenario.BackupService;
 import at.rolinek.cda.security.AdminTokenGuard;
 import at.rolinek.cda.usage.StatsService;
@@ -17,11 +18,14 @@ public class AdminStatsController {
     private final StatsService stats;
     private final BackupService backupService;
     private final AdminTokenGuard guard;
+    private final AiBudgetService aiBudget;
 
-    public AdminStatsController(StatsService stats, BackupService backupService, AdminTokenGuard guard) {
+    public AdminStatsController(StatsService stats, BackupService backupService, AdminTokenGuard guard,
+                               AiBudgetService aiBudget) {
         this.stats = stats;
         this.backupService = backupService;
         this.guard = guard;
+        this.aiBudget = aiBudget;
     }
 
     @GetMapping("/stats/summary")
@@ -57,6 +61,12 @@ public class AdminStatsController {
                                                 @RequestParam(defaultValue = "30") int days) {
         guard.require(auth);
         return stats.scenarios(days);
+    }
+
+    @GetMapping("/stats/ai")
+    public AiBudgetService.MonthSummary ai(@RequestHeader(name = "Authorization", required = false) String auth) {
+        guard.require(auth);
+        return aiBudget.monthSummary();
     }
 
     @GetMapping("/backup/status")

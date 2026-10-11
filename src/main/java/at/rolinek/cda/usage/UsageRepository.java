@@ -41,12 +41,26 @@ public class UsageRepository {
                 PRIMARY KEY (day, type, outcome)
             )
             """);
+        addColumnIfMissing("usage_events", "input_tokens");
+        addColumnIfMissing("usage_events", "output_tokens");
+        addColumnIfMissing("usage_daily", "input_tokens");
+        addColumnIfMissing("usage_daily", "output_tokens");
+    }
+
+    /** SQLite has no ADD COLUMN IF NOT EXISTS; production DBs predate the token columns. */
+    private void addColumnIfMissing(String table, String column) {
+        boolean present = jdbcTemplate.queryForList("PRAGMA table_info(" + table + ")").stream()
+            .anyMatch(row -> column.equals(row.get("name")));
+        if (!present) {
+            jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " INTEGER NOT NULL DEFAULT 0");
+        }
     }
 
     public void insert(UsageEvent event) {
         jdbcTemplate.update("""
-                INSERT INTO usage_events (occurred_at, type, outcome, http_status, username, ip_prefix, detail)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO usage_events (occurred_at, type, outcome, http_status, username, ip_prefix, detail,
+                                          input_tokens, output_tokens)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
             event.occurredAt().toString(),
             event.type().wireName(),
@@ -54,7 +68,9 @@ public class UsageRepository {
             event.httpStatus(),
             event.username(),
             event.ipPrefix(),
-            event.detail());
+            event.detail(),
+            event.inputTokens(),
+            event.outputTokens());
     }
 
     /**
@@ -67,11 +83,14 @@ public class UsageRepository {
     public int rollupBefore(LocalDate cutoffDay) {
         String cutoff = cutoffDay.toString();
         jdbcTemplate.update("""
-                INSERT INTO usage_daily (day, type, outcome, count)
-                SELECT substr(occurred_at, 1, 10), type, outcome, COUNT(*)
+                INSERT INTO usage_daily (day, type, outcome, count, input_tokens, output_tokens)
+                SELECT substr(occurred_at, 1, 10), type, outcome, COUNT(*), SUM(input_tokens), SUM(output_tokens)
                 FROM usage_events WHERE occurred_at < ?
                 GROUP BY substr(occurred_at, 1, 10), type, outcome
-                ON CONFLICT(day, type, outcome) DO UPDATE SET count = count + excluded.count
+                ON CONFLICT(day, type, outcome) DO UPDATE SET
+                    count = count + excluded.count,
+                    input_tokens = input_tokens + excluded.input_tokens,
+                    output_tokens = output_tokens + excluded.output_tokens
                 """, cutoff);
         return jdbcTemplate.update("DELETE FROM usage_events WHERE occurred_at < ?", cutoff);
     }

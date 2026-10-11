@@ -6,7 +6,8 @@ public enum UsageType {
     CLEAN_PDF("clean_pdf"),
     XML_DOWNLOAD("xml_download"),
     SCENARIO_SAVE("scenario_save"),
-    SCENARIO_LOAD("scenario_load");
+    SCENARIO_LOAD("scenario_load"),
+    AI_FILL("ai_fill");
 
     private final String wireName;
 

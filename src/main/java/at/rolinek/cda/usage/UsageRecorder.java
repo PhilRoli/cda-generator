@@ -25,6 +25,11 @@ public class UsageRecorder {
     }
 
     public void record(UsageType type, int httpStatus, String username, HttpServletRequest request, String detail) {
+        record(type, httpStatus, username, request, detail, 0L, 0L);
+    }
+
+    public void record(UsageType type, int httpStatus, String username, HttpServletRequest request, String detail,
+                       long inputTokens, long outputTokens) {
         try {
             boolean ok = httpStatus >= 200 && httpStatus < 300;
             repository.insert(new UsageEvent(
@@ -32,12 +37,19 @@ public class UsageRecorder {
                 type,
                 ok,
                 httpStatus,
-                cap(username == null ? "" : username.trim(), MAX_USERNAME),
+                normalizeUsername(username),
                 IpPrefix.of(ClientIp.from(request)),
-                ok ? cap(detail == null ? "" : detail, MAX_DETAIL) : reasonFor(httpStatus)));
+                ok ? cap(detail == null ? "" : detail, MAX_DETAIL) : reasonFor(httpStatus),
+                Math.max(0L, inputTokens),
+                Math.max(0L, outputTokens)));
         } catch (RuntimeException ex) {
             LOG.warn("Nutzungsereignis konnte nicht gespeichert werden ({}): {}", type.wireName(), ex.getMessage());
         }
+    }
+
+    /** The username exactly as it is stored; counting and caps must use the same form. */
+    public static String normalizeUsername(String username) {
+        return cap(username == null ? "" : username.trim(), MAX_USERNAME);
     }
 
     static String reasonFor(int status) {

@@ -26,6 +26,41 @@ public class StatsQueries {
     record FailureEventRow(String occurredAt, String type, String who, String reason, Integer httpStatus) {}
     record UserScenarioCount(String who, String type, long count) {}
     record TopScenarioRow(String id, String title, long loads) {}
+    public record AiMonthTotals(long fills, long inputTokens, long outputTokens) {}
+
+    /** AI-fill totals over [from, toExclusive) (UTC days) from detailed events and rolled-up days. */
+    public AiMonthTotals aiTotals(LocalDate from, LocalDate toExclusive) {
+        long[] events = jdbc.queryForObject("""
+                SELECT COALESCE(SUM(CASE WHEN outcome = 'ok' THEN 1 ELSE 0 END), 0),
+                       COALESCE(SUM(input_tokens), 0), COALESCE(SUM(output_tokens), 0)
+                FROM usage_events WHERE type = 'ai_fill' AND occurred_at >= ? AND occurred_at < ?
+                """,
+            (rs, i) -> new long[] {rs.getLong(1), rs.getLong(2), rs.getLong(3)},
+            from.toString(), toExclusive.toString());
+        long[] daily = jdbc.queryForObject("""
+                SELECT COALESCE(SUM(CASE WHEN outcome = 'ok' THEN count ELSE 0 END), 0),
+                       COALESCE(SUM(input_tokens), 0), COALESCE(SUM(output_tokens), 0)
+                FROM usage_daily WHERE type = 'ai_fill' AND day >= ? AND day < ?
+                """,
+            (rs, i) -> new long[] {rs.getLong(1), rs.getLong(2), rs.getLong(3)},
+            from.toString(), toExclusive.toString());
+        return new AiMonthTotals(events[0] + daily[0], events[1] + daily[1], events[2] + daily[2]);
+    }
+
+    /**
+     * AI-fill requests that count against the daily cap: a named user by username, an anonymous
+     * one by shortened IP; throttled (429) attempts do not count. Day bounds are 'YYYY-MM-DD' (UTC),
+     * compared as strings like the rest of this class (stored timestamps have varying fraction digits).
+     */
+    public long aiAttemptsOn(LocalDate day, String username, String ipPrefix) {
+        Long count = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM usage_events
+                WHERE type = 'ai_fill' AND detail <> 'throttled' AND occurred_at >= ? AND occurred_at < ?
+                  AND ((? <> '' AND username = ?) OR (? = '' AND username = '' AND ip_prefix = ?))
+                """, Long.class,
+            day.toString(), day.plusDays(1).toString(), username, username, username, ipPrefix);
+        return count == null ? 0 : count;
+    }
 
     /** Counts per day/type/outcome from detailed events and rolled-up daily totals. */
     List<DailyCount> dailyCounts(LocalDate from, LocalDate toExclusive) {

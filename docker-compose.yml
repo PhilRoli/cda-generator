@@ -17,6 +17,10 @@ services:
             APP_WATERMARK_OPACITY: ${APP_WATERMARK_OPACITY:-0.17}
             APP_ADMIN_TOKEN: ${APP_ADMIN_TOKEN:-}
             APP_CLEAN_PDF_PASSWORD: ${APP_CLEAN_PDF_PASSWORD:-}
+            APP_AI_API_KEY: ${APP_AI_API_KEY:-}
+            APP_AI_MODEL: ${APP_AI_MODEL:-claude-haiku-5-5}
+            APP_AI_USER_DAILY_LIMIT: ${APP_AI_USER_DAILY_LIMIT:-20}
+            APP_AI_MONTHLY_BUDGET_USD: ${APP_AI_MONTHLY_BUDGET_USD:-40}
         volumes:
             - app_data:/app/data
             - ./elga-lib:/app/elga-lib:ro

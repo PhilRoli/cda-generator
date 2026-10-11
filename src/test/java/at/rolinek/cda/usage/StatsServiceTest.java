@@ -77,7 +77,7 @@ class StatsServiceTest {
         assertThat(s.current().get("pdf")).isEqualTo(new StatsService.Totals(2, 1));
         assertThat(s.previous().get("pdf")).isEqualTo(new StatsService.Totals(5, 0));
         assertThat(s.current().keySet()).containsExactlyInAnyOrder(
-            "pdf", "clean_pdf", "xml_download", "scenario_save", "scenario_load");
+            "pdf", "clean_pdf", "xml_download", "scenario_save", "scenario_load", "ai_fill");
     }
 
     @Test
