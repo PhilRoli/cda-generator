@@ -18,7 +18,7 @@
     <description>Backend for CDA training generator</description>
 
     <properties>
-        <java.version>25</java.version>
+        <java.version>27</java.version>
         <!-- Filled by the JaCoCo agent; must exist so surefire's @{argLine} resolves without it. -->
         <argLine></argLine>
     </properties>
