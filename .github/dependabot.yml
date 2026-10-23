@@ -4,17 +4,31 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies]
     groups:
       maven-minor-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: bun
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [dependencies]
+    groups:
+      bun-minor-patch:
         update-types: [minor, patch]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    labels: [dependencies, ci]
+    commit-message:
+      prefix: ci
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: monthly
+    labels: [dependencies, docker]
     # A major image bump is a Java version jump (and often a non-LTS one); do those
     # deliberately together with java.version in pom.xml and the CI setup-java version.
     ignore:
