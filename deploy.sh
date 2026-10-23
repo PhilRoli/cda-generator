@@ -30,6 +30,7 @@ rsync -az --delete \
 
 echo "→ Rebuilding backend container"
 # --wait blocks until the compose healthcheck passes and fails the deploy if it doesn't.
+# shellcheck disable=SC2029 # REMOTE_DIR is meant to expand locally
 ssh "$REMOTE" "cd $REMOTE_DIR && docker compose up -d --build --wait --wait-timeout 120"
 
 echo "✓ Deploy sync complete"
