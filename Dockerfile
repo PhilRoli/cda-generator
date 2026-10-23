@@ -1,4 +1,4 @@
-FROM maven:3.10.0-eclipse-temurin-25 AS build
+FROM maven:3-eclipse-temurin-27 AS build
 WORKDIR /app
 COPY pom.xml ./
 COPY src ./src
@@ -7,8 +7,8 @@ COPY src ./src
 RUN --mount=type=cache,target=/root/.m2 mvn -q -DskipTests package
 
 # JRE is enough at runtime (nothing compiles in the container). Pinned to the
-# Ubuntu 24.04 (noble) variant: the user setup below relies on its uid layout.
-FROM eclipse-temurin:25-jre-noble
+# Ubuntu 26.04 (resolute) variant: the user setup below relies on its uid layout.
+FROM eclipse-temurin:27-jre-resolute
 WORKDIR /app
 
 # The container's default locale is POSIX/C, under which the JVM picks
@@ -18,7 +18,7 @@ WORKDIR /app
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 
 # Create a dedicated non-root user to run the application.
-# eclipse-temurin (Ubuntu 24.04) already uses uid/gid 1000 for its default
+# eclipse-temurin (Ubuntu 26.04) already uses uid/gid 1000 for its default
 # "ubuntu" user, so we let the system assign the next available id.
 RUN groupadd --system appuser && useradd --system --gid appuser --no-create-home --shell /usr/sbin/nologin appuser
 
